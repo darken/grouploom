@@ -1,53 +1,95 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createMemoryHistory } from 'vue-router'
 
 import { api } from '@/api/client'
-import router from '@/router'
+import { createAppRouter } from '@/router'
 import App from '../App.vue'
 
-vi.mock('@/api/client', () => ({ api: { GET: vi.fn<() => Promise<unknown>>() } }))
+vi.mock('@/api/client', () => ({
+  api: { GET: vi.fn<() => Promise<unknown>>(), POST: vi.fn<() => Promise<unknown>>() },
+}))
 
 const get = vi.mocked(api.GET) as unknown as ReturnType<typeof vi.fn>
+const post = vi.mocked(api.POST) as unknown as ReturnType<typeof vi.fn>
+
+const signedIn = {
+  data: {
+    accessToken: 'jwt',
+    expiresIn: 900,
+    user: { id: 'u', email: 'ada@example.com', displayName: 'Ada', role: 'OWNER', group: { id: 'g', name: 'Chess Club' } },
+  },
+  response: new Response(),
+}
+const signedOut = { error: { status: 401 }, response: new Response(null, { status: 401 }) }
 
 async function mountApp(path = '/') {
   const pinia = createPinia()
   setActivePinia(pinia)
+  const router = createAppRouter(createMemoryHistory())
   await router.push(path)
   await router.isReady()
   const wrapper = mount(App, { global: { plugins: [pinia, router] } })
   await flushPromises()
-  return wrapper
+  return { wrapper, router }
 }
 
 describe('App', () => {
-  beforeEach(() => get.mockReset())
-
-  it('shows the welcome headline and the backend version in the footer', async () => {
+  beforeEach(() => {
+    get.mockReset()
+    post.mockReset()
     get.mockResolvedValue({ data: { name: 'backend', version: '1.2.3' }, response: new Response() })
+  })
 
-    const wrapper = await mountApp()
+  it('shows the welcome page, group and footer version to a signed-in user', async () => {
+    post.mockResolvedValue(signedIn)
 
-    expect(wrapper.find('h1').text()).toBe('Welcome to GroupLoom')
+    const { wrapper } = await mountApp()
+
+    expect(wrapper.find('h1').text()).toBe('Welcome, Ada')
+    expect(wrapper.text()).toContain('Chess Club')
     expect(wrapper.find('footer').text()).toContain('GroupLoom v1.2.3')
     expect(document.title).toBe('Home · GroupLoom')
   })
 
+  it('sends a guest to the sign-in page', async () => {
+    post.mockResolvedValue(signedOut)
+
+    const { wrapper, router } = await mountApp()
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(wrapper.find('h1').text()).toBe('Sign in to GroupLoom')
+    expect(wrapper.find('header').exists()).toBe(false)
+  })
+
   it('hides the footer version quietly when the backend is down', async () => {
+    post.mockResolvedValue(signedIn)
     get.mockResolvedValue({ error: { status: 502, title: 'Bad Gateway' }, response: new Response(null, { status: 502 }) })
 
-    const wrapper = await mountApp()
+    const { wrapper } = await mountApp()
 
-    expect(wrapper.find('h1').text()).toBe('Welcome to GroupLoom')
     expect(wrapper.find('footer').text()).toBe('')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
   it('shows the not-found page for unknown routes', async () => {
-    get.mockResolvedValue({ error: { status: 502, title: 'Bad Gateway' }, response: new Response(null, { status: 502 }) })
+    post.mockResolvedValue(signedOut)
 
-    const wrapper = await mountApp('/nope')
+    const { wrapper } = await mountApp('/nope')
 
     expect(wrapper.text()).toContain('Page not found')
+  })
+
+  it('returns to the sign-in page when the session ends', async () => {
+    post.mockResolvedValue(signedIn)
+    const { router } = await mountApp()
+    post.mockResolvedValue({ response: new Response(null, { status: 204 }) })
+
+    const { useAuthStore } = await import('@/stores/auth')
+    await useAuthStore().logout()
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/login')
   })
 })
