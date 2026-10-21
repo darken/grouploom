@@ -1,8 +1,14 @@
 spring:
   application:
     name: backend
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
   mvc:
     servlet:
       path: /api
+    problemdetails:
+      enabled: true
 server:
   port: 8080
