@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.user.dto.MeResponse;
 import io.grouploom.backend.user.service.CurrentUserService;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @RestController
@@ -20,7 +21,7 @@ public class MeController {
 	}
 
 	@GetMapping(path = "/me", produces = MediaType.APPLICATION_JSON_VALUE)
-	public MeResponse me(CurrentUser current) {
+	public MeResponse me(@Parameter(hidden = true) CurrentUser current) {
 		return service.me(current);
 	}
 

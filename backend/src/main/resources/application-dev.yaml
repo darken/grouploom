@@ -1,0 +1,3 @@
+grouploom:
+  auth:
+    cookie-secure: false
