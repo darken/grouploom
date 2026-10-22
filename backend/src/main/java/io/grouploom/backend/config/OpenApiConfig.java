@@ -31,6 +31,13 @@ public class OpenApiConfig {
 			problem.addProperty("errors", new ArraySchema().items(new ObjectSchema()
 				.addProperty("field", new StringSchema())
 				.addProperty("message", new StringSchema())));
+			problem.addProperty("code", new StringSchema().description("Stable machine-readable conflict code"));
+			problem.addProperty("field", new StringSchema().description("Input the conflict belongs to"));
+			openApi.getComponents().getSchemas().forEach((name, schema) -> {
+				if (name.startsWith("PagedModel")) {
+					schema.setRequired(java.util.List.of("content", "page"));
+				}
+			});
 			ApiResponse error = new ApiResponse().description("Error").content(new Content()
 				.addMediaType("application/problem+json",
 					new io.swagger.v3.oas.models.media.MediaType().schema(new Schema<>().$ref("#/components/schemas/ProblemDetail"))));

@@ -2,6 +2,7 @@ package io.grouploom.backend.error;
 
 import java.util.List;
 
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -26,7 +27,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(ConflictException.class)
 	ProblemDetail handleConflict(ConflictException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		if (ex.getCode() != null) {
+			problem.setProperty("code", ex.getCode());
+		}
+		if (ex.getField() != null) {
+			problem.setProperty("field", ex.getField());
+		}
+		return problem;
+	}
+
+	// Safety net: sort parameters are whitelisted in controllers, but never leak a 500 for a bad one.
+	@ExceptionHandler(PropertyReferenceException.class)
+	ProblemDetail handleInvalidSort(PropertyReferenceException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid sort property.");
 	}
 
 	@ExceptionHandler({ InvalidCredentialsException.class, InvalidRefreshTokenException.class })

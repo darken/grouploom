@@ -48,6 +48,29 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void conflict_withCodeAndField_exposesThemAsProblemProperties() throws Exception {
+		mockMvc.perform(get("/test/conflict-coded"))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("thing.taken"))
+			.andExpect(jsonPath("$.field").value("name"));
+	}
+
+	@Test
+	void conflict_withoutCode_omitsCodeAndField() throws Exception {
+		mockMvc.perform(get("/test/conflict"))
+			.andExpect(jsonPath("$.code").doesNotExist())
+			.andExpect(jsonPath("$.field").doesNotExist());
+	}
+
+	@Test
+	void unknownSortProperty_returns400ProblemDetail() throws Exception {
+		mockMvc.perform(get("/test/bad-sort"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value("Invalid sort property."));
+	}
+
+	@Test
 	void validation_whenBodyInvalid_returns400WithFieldErrors() throws Exception {
 		mockMvc.perform(post("/test/validate")
 				.with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
@@ -74,6 +97,17 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/conflict")
 		void conflict() {
 			throw new ConflictException("duplicate");
+		}
+
+		@GetMapping("/test/conflict-coded")
+		void conflictCoded() {
+			throw new ConflictException("taken", "thing.taken", "name");
+		}
+
+		@GetMapping("/test/bad-sort")
+		void badSort() {
+			throw new org.springframework.data.core.PropertyReferenceException("nope",
+					org.springframework.data.core.TypeInformation.of(String.class), java.util.List.of());
 		}
 
 		@PostMapping("/test/validate")
