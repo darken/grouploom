@@ -13,12 +13,13 @@ defineProps<{ error: ApiError }>()
       <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" />
       <path d="M10 6v5M10 13.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
     </svg>
-    <div>
+    <div class="flex-1">
       <p class="font-medium">{{ error.problem.title ?? 'Something went wrong' }}</p>
       <p v-if="error.problem.detail" class="text-[var(--app-muted)]">{{ error.problem.detail }}</p>
       <ul v-if="error.problem.errors?.length" class="mt-2 list-disc pl-5 text-[var(--app-muted)]">
         <li v-for="item in error.problem.errors" :key="item.field">{{ item.field }}: {{ item.message }}</li>
       </ul>
     </div>
+    <div class="shrink-0 self-center empty:hidden"><slot /></div>
   </div>
 </template>

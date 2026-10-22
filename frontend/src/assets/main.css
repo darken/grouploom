@@ -77,3 +77,20 @@
   opacity: 0;
   transform: translateY(4px);
 }
+
+.nav-link {
+  color: var(--app-muted);
+  border-bottom: 1.5px solid transparent;
+  transition:
+    color 150ms var(--ease-out-soft),
+    border-color 150ms var(--ease-out-soft);
+}
+
+.nav-link:hover {
+  color: var(--app-ink);
+}
+
+.nav-link[aria-current='page'] {
+  color: var(--app-ink);
+  border-bottom-color: var(--app-ink);
+}

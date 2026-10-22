@@ -4,6 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 
 import AppShell from '@/components/AppShell.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
+import ToastHost from '@/components/ToastHost.vue'
 import { loginLocation } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { useSystemStore } from '@/stores/system'
@@ -32,4 +33,5 @@ watch(
       </Transition>
     </RouterView>
   </component>
+  <ToastHost />
 </template>

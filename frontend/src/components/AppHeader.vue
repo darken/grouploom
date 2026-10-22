@@ -2,6 +2,11 @@
 import { RouterLink } from 'vue-router'
 
 import UserMenu from './UserMenu.vue'
+
+const links = [
+  { to: '/', label: 'Home' },
+  { to: '/event-types', label: 'Event types' },
+]
 </script>
 
 <template>
@@ -13,8 +18,11 @@ import UserMenu from './UserMenu.vue'
         <svg class="size-5 text-[var(--app-accent)]" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M3 6c4-3 10 3 14 0M3 10c4-3 10 3 14 0M3 14c4-3 10 3 14 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
         </svg>
-        GroupLoom
+        <span class="max-sm:sr-only">GroupLoom</span>
       </RouterLink>
+      <nav aria-label="Primary" class="mr-auto ml-5 flex gap-5 text-[15px] whitespace-nowrap sm:ml-8 sm:gap-6">
+        <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="nav-link py-1">{{ link.label }}</RouterLink>
+      </nav>
       <UserMenu />
     </div>
   </header>

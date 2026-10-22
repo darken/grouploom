@@ -1,12 +1,13 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'plain'
+    variant?: 'primary' | 'secondary' | 'plain' | 'danger'
     type?: 'button' | 'submit'
     loading?: boolean
+    disabled?: boolean
     block?: boolean
   }>(),
-  { variant: 'primary', type: 'button', loading: false, block: false },
+  { variant: 'primary', type: 'button', loading: false, disabled: false, block: false },
 )
 
 const styles = {
@@ -14,13 +15,14 @@ const styles = {
   secondary:
     'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink)] hover:border-[var(--app-muted)]',
   plain: 'text-[var(--app-accent)] hover:bg-[var(--app-accent)]/10',
+  danger: 'bg-[var(--app-danger)] text-white hover:opacity-90',
 }
 </script>
 
 <template>
   <button
     :type="type"
-    :disabled="loading"
+    :disabled="loading || disabled"
     :aria-busy="loading"
     class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2 text-[15px] font-medium transition-colors duration-150 ease-out disabled:opacity-60"
     :class="[styles[variant], block && 'w-full']"
