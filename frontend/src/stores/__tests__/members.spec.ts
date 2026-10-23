@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { api } from '@/api/client'
@@ -286,5 +286,139 @@ describe('members store', () => {
     await store.fetch({ q: '', page: 0 })
 
     expect(store.items.map((m) => m.invitationsPaused)).toEqual([true, false])
+  })
+
+  describe('emailing the preferences link', () => {
+    async function loaded(items: object[] = [member('1'), member('2')]) {
+      get.mockResolvedValue(pageOf(items))
+      const store = useMembersStore()
+      await store.fetch({ q: '', page: 0 })
+      get.mockClear()
+      return store
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-10T12:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('sendPreferencesEmail posts for the member, marks it pending locally and reports queued', async () => {
+      post.mockResolvedValue({ data: { queuedAt: '2026-01-10T12:00:00Z' }, response: new Response() })
+      const store = await loaded()
+
+      const result = await store.sendPreferencesEmail('1')
+
+      expect(post).toHaveBeenCalledWith('/members/{id}/preferences-email', { params: { path: { id: '1' } } })
+      expect(result).toBe('queued')
+      expect(store.items[0]!.preferencesEmail).toEqual({ status: 'PENDING', at: '2026-01-10T12:00:00.000Z' })
+      expect(store.items[1]!.preferencesEmail).toBeUndefined()
+      expect(store.error).toBeNull()
+    })
+
+    it('refetches the current page once, ten seconds after a send', async () => {
+      post.mockResolvedValue({ data: { queuedAt: '2026-01-10T12:00:00Z' }, response: new Response() })
+      const store = await loaded()
+      get.mockResolvedValue(pageOf([member('1')], 1, 40))
+      await store.fetch({ q: 'ana', page: 1 })
+      get.mockClear()
+
+      await store.sendPreferencesEmail('1')
+      await vi.advanceTimersByTimeAsync(9_999)
+      expect(get).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+
+      expect(get).toHaveBeenCalledTimes(1)
+      expect(get).toHaveBeenCalledWith('/members', {
+        params: { query: expect.objectContaining({ q: 'ana', page: 1 }) },
+      })
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(get).toHaveBeenCalledTimes(1)
+    })
+
+    it('sending again before the refetch fires still refetches only once', async () => {
+      post.mockResolvedValue({ data: { queuedAt: '2026-01-10T12:00:00Z' }, response: new Response() })
+      const store = await loaded()
+
+      await store.sendPreferencesEmail('1')
+      await vi.advanceTimersByTimeAsync(4_000)
+      await store.sendPreferencesEmail('2')
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(get).toHaveBeenCalledTimes(1)
+    })
+
+    it('answers a 429 cooldown with a typed result, not an error, and schedules nothing', async () => {
+      post.mockResolvedValue(problem(429, { code: 'email.cooldown' }))
+      const store = await loaded()
+
+      const result = await store.sendPreferencesEmail('1')
+
+      expect(result).toBe('cooldown')
+      expect(store.error).toBeNull()
+      expect(store.items[0]!.preferencesEmail).toBeUndefined()
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(get).not.toHaveBeenCalled()
+    })
+
+    it('reports any other failure as failed and keeps the error for the banner', async () => {
+      post.mockResolvedValue(problem(404))
+      const store = await loaded()
+
+      expect(await store.sendPreferencesEmail('gone')).toBe('failed')
+      expect(store.error?.status).toBe(404)
+    })
+
+    it('reports a network failure as failed', async () => {
+      post.mockRejectedValue(new TypeError('Failed to fetch'))
+      const store = await loaded()
+
+      expect(await store.sendPreferencesEmail('1')).toBe('failed')
+      expect(store.error?.status).toBe(0)
+    })
+
+    it('sendPreferencesEmailToAll returns the counts and refetches right away', async () => {
+      post.mockResolvedValue({ data: { queued: 22, skipped: 2 }, response: new Response() })
+      const store = await loaded()
+
+      const result = await store.sendPreferencesEmailToAll()
+
+      expect(post).toHaveBeenCalledWith('/members/preferences-email')
+      expect(result).toEqual({ queued: 22, skipped: 2 })
+      expect(get).toHaveBeenCalledTimes(1)
+    })
+
+    it('sendPreferencesEmailToAll also schedules the one delayed refetch', async () => {
+      post.mockResolvedValue({ data: { queued: 1, skipped: 0 }, response: new Response() })
+      const store = await loaded()
+
+      await store.sendPreferencesEmailToAll()
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      expect(get).toHaveBeenCalledTimes(2)
+    })
+
+    it('sendPreferencesEmailToAll returns null and keeps the error when it fails', async () => {
+      post.mockResolvedValue(problem(500))
+      const store = await loaded()
+
+      expect(await store.sendPreferencesEmailToAll()).toBeNull()
+      expect(store.error?.status).toBe(500)
+      expect(get).not.toHaveBeenCalled()
+    })
+
+    it('refresh refetches the current page and hasPendingEmail tells when that is worth doing', async () => {
+      const store = await loaded([
+        member('1', { preferencesEmail: { status: 'SENT', at: '2026-01-10T11:00:00Z' } }),
+        member('2'),
+      ])
+      expect(store.hasPendingEmail).toBe(false)
+
+      get.mockResolvedValue(pageOf([member('1', { preferencesEmail: { status: 'SENDING', at: '2026-01-10T11:59:00Z' } })]))
+      await store.refresh()
+
+      expect(get).toHaveBeenCalledTimes(1)
+      expect(store.hasPendingEmail).toBe(true)
+    })
   })
 })

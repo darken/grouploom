@@ -39,6 +39,9 @@ function pageOf(items: object[], total = items.length, number = 0) {
   }
 }
 
+// Views listen on window, so each test unmounts what it mounted.
+const mounted: { unmount: () => void }[] = []
+
 async function mountView(url = '/members') {
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -49,6 +52,7 @@ async function mountView(url = '/members') {
     global: { plugins: [pinia, router] },
     attachTo: document.body,
   })
+  mounted.push(wrapper)
   await flushPromises()
   return { wrapper, router }
 }
@@ -68,7 +72,10 @@ describe('MembersView', () => {
     useToast().dismiss()
     document.body.innerHTML = ''
   })
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    vi.useRealTimers()
+    mounted.splice(0).forEach((w) => w.unmount())
+  })
 
   it('renders the title, a count and one row per member', async () => {
     get.mockResolvedValue(pageOf([member('1'), member('2')], 24))
@@ -316,5 +323,232 @@ describe('MembersView', () => {
     await flushPromises()
 
     expect(wrapper.findAll('li')).toHaveLength(1)
+  })
+
+  describe('emailing preferences links', () => {
+    const bulkMenu = (w: Wrapper) => w.get('button[aria-label="More member actions"]')
+    const bulkItem = (w: Wrapper) => w.findAll('[role=menuitem]').find((m) => m.text() === 'Email preferences links to everyone')!
+    const toastText = () => useToast().toast.value?.message
+
+    async function openBulkConfirm(wrapper: Wrapper) {
+      await bulkMenu(wrapper).trigger('click')
+      await bulkItem(wrapper).trigger('click')
+    }
+
+    async function chooseRowAction(wrapper: Wrapper, name: string, action: string) {
+      await wrapper.get(`button[aria-label="Actions for ${name}"]`).trigger('click')
+      await wrapper.findAll('[role=menuitem]').find((m) => m.text() === action)!.trigger('click')
+      await flushPromises()
+    }
+
+    it('keeps "Add member" as the one primary action and puts bulk send in an overflow menu', async () => {
+      get.mockResolvedValue(pageOf([member('1')]))
+
+      const { wrapper } = await mountView()
+
+      expect(wrapper.find('[role=menu]').exists()).toBe(false)
+      await bulkMenu(wrapper).trigger('click')
+      expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Email preferences links to everyone'])
+    })
+
+    it('asks for confirmation with the member count before sending to everyone', async () => {
+      get.mockResolvedValue(pageOf([member('1'), member('2')], 24))
+      const { wrapper } = await mountView()
+
+      await openBulkConfirm(wrapper)
+
+      const dialog = dialogOpen(wrapper)[0]!
+      expect(dialog.text()).toContain(
+        'Send preferences links to 24 members? Anyone who got a link in the last 5 minutes is skipped.',
+      )
+      expect(dialog.findAll('button').map((b) => b.text())).toEqual(['Cancel', 'Send links'])
+      expect(dialog.findAll('button')[1]!.classes().join(' ')).not.toContain('danger')
+      expect(post).not.toHaveBeenCalled()
+    })
+
+    it('sends, refetches and says how many links are going out', async () => {
+      get.mockResolvedValue(pageOf([member('1')], 24))
+      post.mockResolvedValue({ data: { queued: 22, skipped: 2 }, response: new Response() })
+      const { wrapper } = await mountView()
+      await openBulkConfirm(wrapper)
+      get.mockClear()
+
+      await button(wrapper, 'Send links')!.trigger('click')
+      await flushPromises()
+
+      expect(post).toHaveBeenCalledWith('/members/preferences-email')
+      expect(toastText()).toBe('Sending links to 22 members · 2 skipped')
+      expect(get).toHaveBeenCalledTimes(1)
+      expect(dialogOpen(wrapper)).toHaveLength(0)
+    })
+
+    it('leaves out "skipped" when nobody was skipped and uses the singular for one member', async () => {
+      get.mockResolvedValue(pageOf([member('1')]))
+      post.mockResolvedValue({ data: { queued: 1, skipped: 0 }, response: new Response() })
+      const { wrapper } = await mountView()
+      await openBulkConfirm(wrapper)
+
+      await button(wrapper, 'Send links')!.trigger('click')
+      await flushPromises()
+
+      expect(toastText()).toBe('Sending link to 1 member')
+    })
+
+    it('says so when everyone was skipped', async () => {
+      get.mockResolvedValue(pageOf([member('1')], 3))
+      post.mockResolvedValue({ data: { queued: 0, skipped: 3 }, response: new Response() })
+      const { wrapper } = await mountView()
+      await openBulkConfirm(wrapper)
+
+      await button(wrapper, 'Send links')!.trigger('click')
+      await flushPromises()
+
+      expect(toastText()).toBe('No links sent · 3 skipped')
+    })
+
+    it('sends nothing when the confirmation is cancelled', async () => {
+      get.mockResolvedValue(pageOf([member('1')]))
+      const { wrapper } = await mountView()
+      await openBulkConfirm(wrapper)
+
+      await button(wrapper, 'Cancel')!.trigger('click')
+
+      expect(post).not.toHaveBeenCalled()
+      expect(dialogOpen(wrapper)).toHaveLength(0)
+    })
+
+    it('reports a failed bulk send', async () => {
+      get.mockResolvedValue(pageOf([member('1')]))
+      post.mockResolvedValue({ error: { status: 500, title: 'Err' }, response: new Response(null, { status: 500 }) })
+      const { wrapper } = await mountView()
+      await openBulkConfirm(wrapper)
+
+      await button(wrapper, 'Send links')!.trigger('click')
+      await flushPromises()
+
+      expect(toastText()).toBe("Couldn't send the links. Try again.")
+    })
+
+    it('disables the bulk action when the group has no members', async () => {
+      get.mockResolvedValue(pageOf([]))
+      const { wrapper } = await mountView()
+
+      await bulkMenu(wrapper).trigger('click')
+
+      expect(bulkItem(wrapper).attributes('disabled')).toBeDefined()
+      await bulkItem(wrapper).trigger('click')
+      expect(dialogOpen(wrapper)).toHaveLength(0)
+    })
+
+    it('does not claim a count while a search narrows the list, because the send goes to everyone', async () => {
+      get.mockResolvedValue(pageOf([member('1')], 1))
+      const { wrapper } = await mountView('/members?q=ana')
+
+      await openBulkConfirm(wrapper)
+
+      const text = dialogOpen(wrapper)[0]!.text()
+      expect(text).toContain('every member')
+      expect(text).toContain('not just the search results')
+      expect(text).not.toContain('1 member')
+    })
+
+    it('keeps the bulk action enabled when a search finds nobody but the group has members', async () => {
+      get.mockResolvedValue(pageOf([]))
+      const { wrapper } = await mountView('/members?q=zzz')
+
+      await bulkMenu(wrapper).trigger('click')
+
+      expect(bulkItem(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('emails one member from the row menu and confirms with their name', async () => {
+      get.mockResolvedValue(pageOf([member('1', { name: 'Ana' })]))
+      post.mockResolvedValue({ data: { queuedAt: '2026-01-10T12:00:00Z' }, response: new Response() })
+      const { wrapper } = await mountView()
+
+      await chooseRowAction(wrapper, 'Ana', 'Email preferences link')
+
+      expect(post).toHaveBeenCalledWith('/members/{id}/preferences-email', { params: { path: { id: '1' } } })
+      expect(toastText()).toBe('Sending link to Ana')
+      expect(wrapper.get('[data-email-status]').text()).toBe('Sending link…')
+    })
+
+    it('explains the cooldown when a link went out moments ago', async () => {
+      get.mockResolvedValue(pageOf([member('1', { name: 'Ana' })]))
+      post.mockResolvedValue({
+        error: { status: 429, title: 'Too many', code: 'email.cooldown' },
+        response: new Response(null, { status: 429 }),
+      })
+      const { wrapper } = await mountView()
+
+      await chooseRowAction(wrapper, 'Ana', 'Email preferences link')
+
+      expect(toastText()).toBe('A link was sent to Ana a moment ago. Try again in a few minutes.')
+      expect(wrapper.find('[role=alert]').exists()).toBe(false)
+    })
+
+    it('reports a failed single send', async () => {
+      get.mockResolvedValue(pageOf([member('1', { name: 'Ana' })]))
+      post.mockResolvedValue({ error: { status: 500, title: 'Err' }, response: new Response(null, { status: 500 }) })
+      const { wrapper } = await mountView()
+
+      await chooseRowAction(wrapper, 'Ana', 'Email preferences link')
+
+      expect(toastText()).toBe("Couldn't send the link to Ana. Try again.")
+    })
+
+    it('retries a failed delivery from the status line', async () => {
+      get.mockResolvedValue(
+        pageOf([member('1', { name: 'Ana', preferencesEmail: { status: 'FAILED', at: '2026-01-10T11:00:00Z' } })]),
+      )
+      post.mockResolvedValue({ data: { queuedAt: '2026-01-10T12:00:00Z' }, response: new Response() })
+      const { wrapper } = await mountView()
+
+      await wrapper.get('[data-email-status] button').trigger('click')
+      await flushPromises()
+
+      expect(post).toHaveBeenCalledWith('/members/{id}/preferences-email', { params: { path: { id: '1' } } })
+      expect(toastText()).toBe('Sending link to Ana')
+    })
+
+    it('looks again when the window regains focus while a link is still sending', async () => {
+      get.mockResolvedValue(
+        pageOf([member('1', { preferencesEmail: { status: 'SENDING', at: '2026-01-10T11:59:00Z' } })]),
+      )
+      await mountView()
+      get.mockClear()
+
+      window.dispatchEvent(new Event('focus'))
+      await flushPromises()
+
+      expect(get).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not refetch on focus when nothing is waiting on the mail server', async () => {
+      get.mockResolvedValue(
+        pageOf([member('1', { preferencesEmail: { status: 'SENT', at: '2026-01-10T11:59:00Z' } })]),
+      )
+      await mountView()
+      get.mockClear()
+
+      window.dispatchEvent(new Event('focus'))
+      await flushPromises()
+
+      expect(get).not.toHaveBeenCalled()
+    })
+
+    it('stops listening for focus once the view is gone', async () => {
+      get.mockResolvedValue(
+        pageOf([member('1', { preferencesEmail: { status: 'SENDING', at: '2026-01-10T11:59:00Z' } })]),
+      )
+      const { wrapper } = await mountView()
+      wrapper.unmount()
+      get.mockClear()
+
+      window.dispatchEvent(new Event('focus'))
+      await flushPromises()
+
+      expect(get).not.toHaveBeenCalled()
+    })
   })
 })

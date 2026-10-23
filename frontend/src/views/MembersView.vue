@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -9,6 +9,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import ErrorBanner from '@/components/ErrorBanner.vue'
 import MemberForm from '@/components/MemberForm.vue'
 import MemberList from '@/components/MemberList.vue'
+import OverflowMenu from '@/components/OverflowMenu.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import SearchField from '@/components/SearchField.vue'
 import { useToast } from '@/composables/useToast'
@@ -89,6 +90,59 @@ async function reloadAfterStale() {
   await retry()
 }
 
+// --- email preferences links ---
+async function sendLink(target: Member) {
+  const result = await store.sendPreferencesEmail(target.id)
+  if (result === 'queued') toast.show(`Sending link to ${target.name}`)
+  else if (result === 'cooldown') {
+    toast.show(`A link was sent to ${target.name} a moment ago. Try again in a few minutes.`)
+  } else toast.show(`Couldn't send the link to ${target.name}. Try again.`)
+}
+
+const bulkItems = computed(() => [
+  {
+    id: 'email-all',
+    label: 'Email preferences links to everyone',
+    // Unknown while searching: an empty result says nothing about the rest of the group.
+    disabled: !store.loaded || (!q.value.trim() && (store.pageInfo?.totalElements ?? 0) === 0),
+  },
+])
+
+const confirmingBulk = ref(false)
+
+// The total counts search matches, but the send goes to the whole group, so no count while searching.
+const bulkMessage = computed(() => {
+  const skipNote = 'Anyone who got a link in the last 5 minutes is skipped.'
+  if (q.value.trim()) {
+    return `Send preferences links to every member of the group, not just the search results? ${skipNote}`
+  }
+  const total = store.pageInfo?.totalElements ?? 0
+  return `Send preferences links to ${total} ${total === 1 ? 'member' : 'members'}? ${skipNote}`
+})
+
+async function confirmBulk() {
+  confirmingBulk.value = false
+  const result = await store.sendPreferencesEmailToAll()
+  if (!result) {
+    toast.show("Couldn't send the links. Try again.")
+    return
+  }
+  const skipped = result.skipped > 0 ? ` · ${result.skipped} skipped` : ''
+  toast.show(
+    result.queued === 0
+      ? `No links sent${skipped}`
+      : `Sending ${result.queued === 1 ? 'link' : 'links'} to ${result.queued} ${result.queued === 1 ? 'member' : 'members'}${skipped}`,
+  )
+}
+
+// Only a link still being sent can change behind our back, so that is the only reason to look again.
+function onFocus() {
+  if (store.hasPendingEmail && !store.loading) void store.refresh()
+}
+
+onMounted(() => window.addEventListener('focus', onFocus))
+onBeforeUnmount(() => window.removeEventListener('focus', onFocus))
+
 // --- remove ---
 const removing = ref<Member | null>(null)
 
@@ -114,12 +168,15 @@ async function confirmRemove() {
       <div class="order-last w-full sm:order-none sm:ml-auto sm:w-72">
         <SearchField v-model="search" />
       </div>
-      <BaseButton @click="openForm(null)">
-        <svg class="size-4 sm:hidden" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-        </svg>
-        <span class="max-sm:sr-only">Add member</span>
-      </BaseButton>
+      <div class="ml-auto flex items-center gap-2">
+        <OverflowMenu label="More member actions" :items="bulkItems" @select="confirmingBulk = true" />
+        <BaseButton @click="openForm(null)">
+          <svg class="size-4 sm:hidden" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <span class="max-sm:sr-only">Add member</span>
+        </BaseButton>
+      </div>
     </div>
 
     <div class="mt-8 space-y-4">
@@ -142,6 +199,7 @@ async function confirmRemove() {
           :query="q"
           @edit="openForm"
           @remove="removing = $event"
+          @send-email="sendLink"
         />
         <EmptyState v-else-if="q.trim()" :title="`No members match &quot;${q.trim()}&quot;.`">
           <BaseButton variant="secondary" @click="search = ''">Clear search</BaseButton>
@@ -185,6 +243,15 @@ async function confirmRemove() {
         @cancel="closeForm"
       />
     </BaseDialog>
+
+    <ConfirmDialog
+      :open="confirmingBulk"
+      title="Email preferences links?"
+      :message="bulkMessage"
+      confirm-label="Send links"
+      @confirm="confirmBulk"
+      @cancel="confirmingBulk = false"
+    />
 
     <ConfirmDialog
       :open="removing !== null"

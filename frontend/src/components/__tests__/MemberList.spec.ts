@@ -23,6 +23,7 @@ function member(overrides: Partial<Member> = {}): Member {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     invitationsPaused: false,
+    preferencesEmail: null,
     ...overrides,
   }
 }
@@ -85,15 +86,20 @@ describe('MemberList', () => {
     expect(wrapper.emitted('edit')).toEqual([[first]])
   })
 
-  it('opens an actions menu with Edit, Copy preferences link and Remove', async () => {
+  it('opens an actions menu with Email preferences link, Copy preferences link, Edit and Remove', async () => {
     const first = member()
     const wrapper = mount(MemberList, { props: { items: [first] } })
     expect(wrapper.find('[role=menu]').exists()).toBe(false)
 
     await wrapper.find('button[aria-label="Actions for Ana Pérez"]').trigger('click')
-    expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Edit', 'Copy preferences link', 'Remove'])
+    expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual([
+      'Email preferences link',
+      'Copy preferences link',
+      'Edit',
+      'Remove',
+    ])
 
-    await wrapper.findAll('[role=menuitem]')[2]!.trigger('click')
+    await wrapper.findAll('[role=menuitem]')[3]!.trigger('click')
     expect(wrapper.emitted('remove')?.[0]).toEqual([first])
     expect(wrapper.find('[role=menu]').exists()).toBe(false)
   })
@@ -103,7 +109,7 @@ describe('MemberList', () => {
     const wrapper = mount(MemberList, { props: { items: [first] } })
 
     await wrapper.find('button[aria-label="Actions for Ana Pérez"]').trigger('click')
-    await wrapper.findAll('[role=menuitem]')[0]!.trigger('click')
+    await wrapper.findAll('[role=menuitem]')[2]!.trigger('click')
 
     expect(wrapper.emitted('edit')?.[0]).toEqual([first])
   })
@@ -116,6 +122,77 @@ describe('MemberList', () => {
 
     expect(wrapper.find('[role=menu]').exists()).toBe(false)
     wrapper.unmount()
+  })
+
+  it('emits send-email from the Email preferences link menu item', async () => {
+    const first = member()
+    const wrapper = mount(MemberList, { props: { items: [first] } })
+
+    await wrapper.find('button[aria-label="Actions for Ana Pérez"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]')[0]!.trigger('click')
+
+    expect(wrapper.emitted('send-email')).toEqual([[first]])
+    expect(wrapper.find('[role=menu]').exists()).toBe(false)
+  })
+
+  describe('email status line', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-10T12:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    const status = (wrapper: ReturnType<typeof mount>) => wrapper.find('[data-email-status]')
+
+    it('shows nothing for a member who was never emailed', () => {
+      const wrapper = mount(MemberList, { props: { items: [member({ preferencesEmail: null })] } })
+
+      expect(status(wrapper).exists()).toBe(false)
+    })
+
+    it.each(['PENDING', 'SENDING'] as const)('says "Sending link…" while the email is %s', (value) => {
+      const wrapper = mount(MemberList, {
+        props: { items: [member({ preferencesEmail: { status: value, at: '2026-01-10T11:59:50Z' } })] },
+      })
+
+      expect(status(wrapper).text()).toBe('Sending link…')
+    })
+
+    it('says when the link was sent', () => {
+      const wrapper = mount(MemberList, {
+        props: { items: [member({ preferencesEmail: { status: 'SENT', at: '2026-01-10T10:00:00Z' } })] },
+      })
+
+      expect(status(wrapper).text()).toBe('Link sent · 2 hr ago')
+    })
+
+    it('says "Couldn\'t deliver link" in red with an inline Try again when it failed', () => {
+      const wrapper = mount(MemberList, {
+        props: { items: [member({ preferencesEmail: { status: 'FAILED', at: '2026-01-10T11:00:00Z' } })] },
+      })
+
+      expect(status(wrapper).text()).toContain("Couldn't deliver link")
+      expect(status(wrapper).classes().join(' ')).toContain('app-danger')
+      expect(status(wrapper).find('button').text()).toBe('Try again')
+    })
+
+    it('does not use red for anything but a failure', () => {
+      const wrapper = mount(MemberList, {
+        props: { items: [member({ preferencesEmail: { status: 'SENT', at: '2026-01-10T11:00:00Z' } })] },
+      })
+
+      expect(status(wrapper).classes().join(' ')).not.toContain('app-danger')
+    })
+
+    it('emits send-email for that member when Try again is clicked, without opening the editor', async () => {
+      const failed = member({ preferencesEmail: { status: 'FAILED', at: '2026-01-10T11:00:00Z' } })
+      const wrapper = mount(MemberList, { props: { items: [failed] } })
+
+      await status(wrapper).get('button').trigger('click')
+
+      expect(wrapper.emitted('send-email')).toEqual([[failed]])
+      expect(wrapper.emitted('edit')).toBeUndefined()
+    })
   })
 
   describe('paused pill', () => {

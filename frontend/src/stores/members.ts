@@ -11,11 +11,16 @@ export type Member = components['schemas']['MemberResponse']
 export type CreateMemberInput = components['schemas']['CreateMemberRequest']
 export type UpdateMemberInput = components['schemas']['UpdateMemberRequest']
 export type PreferencesLink = components['schemas']['PreferencesLinkResponse']
+export type BulkEmailResult = components['schemas']['BulkEmailResult']
+/** `cooldown`: a link went to that member moments ago, so nothing was queued. */
+export type SendEmailResult = 'queued' | 'cooldown' | 'failed'
 
 /** What the member form emits: the edit fields additionally carry the version. */
 export type MemberDraft = CreateMemberInput & Partial<Pick<UpdateMemberInput, 'version'>>
 
 const PAGE_SIZE = 20
+// The dispatcher sends within seconds; one look after this delay picks up SENT or FAILED.
+const EMAIL_REFRESH_MS = 10_000
 
 function toApiError(e: unknown): ApiError {
   return e instanceof ApiError
@@ -77,6 +82,17 @@ export const useMembersStore = defineStore('members', () => {
 
   const reload = () => fetch({ q: query.value, page: page.value })
 
+  // Email goes out in the background, so the list is looked at again once after a send. No polling.
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => void reload(), EMAIL_REFRESH_MS)
+  }
+
+  const hasPendingEmail = computed(() =>
+    items.value.some((m) => m.preferencesEmail?.status === 'PENDING' || m.preferencesEmail?.status === 'SENDING'),
+  )
+
   async function save(request: () => Promise<void>): Promise<boolean> {
     saving.value = true
     saveError.value = null
@@ -130,12 +146,45 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
+  /** Queues the link email. A 429 cooldown is an expected answer, not an error. */
+  async function sendPreferencesEmail(id: string): Promise<SendEmailResult> {
+    error.value = null
+    try {
+      unwrap(await api.POST('/members/{id}/preferences-email', { params: { path: { id } } }))
+    } catch (e) {
+      const failure = toApiError(e)
+      if (failure.status === 429 && failure.problem.code === 'email.cooldown') return 'cooldown'
+      error.value = failure
+      return 'failed'
+    }
+    const at = new Date().toISOString()
+    items.value = items.value.map((m) => (m.id === id ? { ...m, preferencesEmail: { status: 'PENDING', at } } : m))
+    scheduleRefresh()
+    return 'queued'
+  }
+
+  /** Queues the link email for every member; null when the request failed. */
+  async function sendPreferencesEmailToAll(): Promise<BulkEmailResult | null> {
+    error.value = null
+    let result: BulkEmailResult
+    try {
+      result = unwrap(await api.POST('/members/preferences-email'))
+    } catch (e) {
+      error.value = toApiError(e)
+      return null
+    }
+    await reload()
+    scheduleRefresh()
+    return result
+  }
+
   function clearSaveError() {
     saveError.value = null
   }
 
   return {
     items, pageInfo, page, query, loading, loaded, saving, error, saveError, stale, fieldErrors,
-    fetch, create, update, remove, createPreferencesLink, clearSaveError,
+    fetch, create, update, remove, createPreferencesLink, sendPreferencesEmail, sendPreferencesEmailToAll,
+    hasPendingEmail, refresh: reload, clearSaveError,
   }
 })

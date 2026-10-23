@@ -116,6 +116,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/members/{id}/preferences-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a member their preferences link
+         * @description Queues the email; a background dispatcher sends it, so check `preferencesEmail` on the member for the outcome. Each call issues a new link when the email is sent.
+         */
+        post: operations["sendPreferencesEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/members/preferences-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email every member their preferences link
+         * @description Queues one email per member, skipping members emailed within the cooldown.
+         */
+        post: operations["sendPreferencesEmailToAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -310,6 +350,12 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        EmailDeliveryStatus: {
+            /** @enum {string} */
+            status: "PENDING" | "SENDING" | "SENT" | "FAILED";
+            /** Format: date-time */
+            at: string;
+        };
         MemberResponse: {
             /** Format: uuid */
             id: string;
@@ -323,6 +369,8 @@ export interface components {
             updatedAt: string;
             /** @description The member paused all invitations. Only the member can change this. */
             readonly invitationsPaused: boolean;
+            /** @description Latest preferences-link email to this member; null if none was ever requested. */
+            preferencesEmail: components["schemas"]["EmailDeliveryStatus"] | null;
         };
         UpdateEventRequest: {
             /** Format: uuid */
@@ -431,6 +479,16 @@ export interface components {
             url: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        EmailQueuedResponse: {
+            /** Format: date-time */
+            queuedAt: string;
+        };
+        BulkEmailResult: {
+            /** Format: int32 */
+            queued: number;
+            /** Format: int32 */
+            skipped: number;
         };
         CreateEventRequest: {
             /** Format: uuid */
@@ -1142,6 +1200,84 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    sendPreferencesEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailQueuedResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description A link was sent to this member recently (code email.cooldown) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    sendPreferencesEmailToAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkEmailResult"];
                 };
             };
             /** @description Error */
