@@ -5,13 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -29,12 +32,16 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import io.grouploom.backend.auth.CurrentUser;
+import io.grouploom.backend.config.AppProperties;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
 import io.grouploom.backend.member.dto.CreateMemberRequest;
 import io.grouploom.backend.member.dto.UpdateMemberRequest;
+import io.grouploom.backend.membertoken.MemberTokenPurpose;
+import io.grouploom.backend.membertoken.MemberTokenService;
+import io.grouploom.backend.preference.PreferenceService;
 import io.grouploom.backend.user.Role;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +53,8 @@ class MemberServiceTest {
 
 	@Mock MemberRepository repository;
 	@Mock GroupRepository groups;
+	@Mock MemberTokenService memberTokens;
+	@Mock PreferenceService preferences;
 
 	private final UUID groupId = UUID.randomUUID();
 	private final CurrentUser current = new CurrentUser(UUID.randomUUID(), groupId, Role.ORGANIZER);
@@ -58,7 +67,9 @@ class MemberServiceTest {
 		ReflectionTestUtils.setField(group, "id", groupId);
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		given(repository.saveAndFlush(any(Member.class))).willAnswer(i -> i.getArgument(0));
-		service = new MemberService(repository, groups, Clock.fixed(LATER, ZoneOffset.UTC));
+		service = new MemberService(repository, groups, memberTokens, preferences,
+				new AppProperties("https://app.example.com", new AppProperties.MemberLinks(Duration.ofDays(60))),
+				Clock.fixed(LATER, ZoneOffset.UTC));
 	}
 
 	private Member existing(String name, String email) {
@@ -179,6 +190,111 @@ class MemberServiceTest {
 
 		assertThatThrownBy(() -> service.update(current, m.getId(), update("Ana", "ana@example.com", 0)))
 			.isInstanceOfSatisfying(ConflictException.class, e -> assertThat(e.getCode()).isEqualTo("member.stale"));
+	}
+
+	@Test
+	void update_changingTheEmail_revokesTheMembersLinks() {
+		Member m = existing("Ana", "ana@example.com");
+
+		service.update(current, m.getId(), update("Ana", "new@example.com", 0));
+
+		verify(memberTokens).revokeAll(m);
+	}
+
+	@Test
+	void update_changingOnlyTheCaseOfTheEmail_keepsTheMembersLinks() {
+		Member m = existing("Ana", "ana@example.com");
+
+		service.update(current, m.getId(), update("Ana", "ANA@example.com", 0));
+
+		verify(memberTokens, never()).revokeAll(any());
+	}
+
+	@Test
+	void update_changingOnlyTheName_keepsTheMembersLinks() {
+		Member m = existing("Ana", "ana@example.com");
+
+		service.update(current, m.getId(), update("Ana María", "ana@example.com", 0));
+
+		verify(memberTokens, never()).revokeAll(any());
+	}
+
+	@Test
+	void update_whenStale_doesNotRevokeLinks() {
+		Member m = existing("Ana", "ana@example.com");
+		ReflectionTestUtils.setField(m, "version", 3L);
+
+		assertThatThrownBy(() -> service.update(current, m.getId(), update("Ana", "new@example.com", 2)))
+			.isInstanceOf(ConflictException.class);
+		verify(memberTokens, never()).revokeAll(any());
+	}
+
+	// --- preferences link ---
+
+	@Test
+	void createPreferencesLink_buildsTheFragmentUrlFromTheIssuedToken() {
+		Member m = existing("Ana", "ana@example.com");
+		Instant expires = LATER.plus(Duration.ofDays(60));
+		given(memberTokens.issue(m, MemberTokenPurpose.PREFERENCES))
+			.willReturn(new MemberTokenService.IssuedToken("abc-DEF_123", expires));
+
+		var link = service.createPreferencesLink(current, m.getId());
+
+		assertThat(link.url()).isEqualTo("https://app.example.com/m/preferences#t=abc-DEF_123");
+		assertThat(link.expiresAt()).isEqualTo(expires);
+	}
+
+	@Test
+	void createPreferencesLink_withTrailingSlashInBaseUrl_doesNotDoubleTheSlash() {
+		service = new MemberService(repository, groups, memberTokens, preferences,
+				new AppProperties("https://app.example.com/", new AppProperties.MemberLinks(Duration.ofDays(60))),
+				Clock.fixed(LATER, ZoneOffset.UTC));
+		Member m = existing("Ana", "ana@example.com");
+		given(memberTokens.issue(m, MemberTokenPurpose.PREFERENCES))
+			.willReturn(new MemberTokenService.IssuedToken("tok", LATER));
+
+		assertThat(service.createPreferencesLink(current, m.getId()).url())
+			.isEqualTo("https://app.example.com/m/preferences#t=tok");
+	}
+
+	@Test
+	void createPreferencesLink_withMemberFromAnotherGroup_throwsNotFoundWithoutIssuing() {
+		UUID foreignId = UUID.randomUUID();
+		given(repository.findByIdAndGroupId(foreignId, groupId)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.createPreferencesLink(current, foreignId)).isInstanceOf(NotFoundException.class);
+		verify(memberTokens, never()).issue(any(), any());
+	}
+
+	// --- paused flag ---
+
+	@Test
+	void get_fillsInvitationsPausedFromThePreferences() {
+		Member m = existing("Ana", "ana@example.com");
+		given(preferences.isPaused(m.getId())).willReturn(true);
+
+		assertThat(service.get(current, m.getId()).invitationsPaused()).isTrue();
+	}
+
+	@Test
+	void create_returnsMemberAsNotPaused() {
+		assertThat(service.create(current, new CreateMemberRequest("Ana", "ana@example.com")).invitationsPaused())
+			.isFalse();
+	}
+
+	@Test
+	void list_fillsInvitationsPausedWithASingleQueryForThePage() {
+		Member ana = existing("Ana", "ana@example.com");
+		Member bob = existing("Bob", "bob@example.com");
+		PageRequest page = PageRequest.of(0, 20);
+		given(repository.findAllByGroupId(groupId, page)).willReturn(new PageImpl<>(List.of(ana, bob), page, 2));
+		given(preferences.pausedMemberIds(groupId)).willReturn(Set.of(bob.getId()));
+
+		var result = service.list(current, null, page).getContent();
+
+		assertThat(result).extracting("invitationsPaused").containsExactly(false, true);
+		verify(preferences, times(1)).pausedMemberIds(groupId);
+		verify(preferences, never()).isPaused(any());
 	}
 
 	// --- get / delete / tenancy ---

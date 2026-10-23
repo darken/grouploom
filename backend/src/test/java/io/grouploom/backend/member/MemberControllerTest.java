@@ -41,6 +41,7 @@ import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.member.dto.MemberResponse;
+import io.grouploom.backend.member.dto.PreferencesLinkResponse;
 
 @WebMvcTest(MemberController.class)
 @Import({ SecurityConfig.class, WebConfig.class, GlobalExceptionHandler.class, CurrentUserArgumentResolver.class })
@@ -65,7 +66,7 @@ class MemberControllerTest {
 	}
 
 	private static MemberResponse response() {
-		return new MemberResponse(ID, "Ana Pérez", "ana@example.com", 0, NOW, NOW);
+		return new MemberResponse(ID, "Ana Pérez", "ana@example.com", 0, NOW, NOW, false);
 	}
 
 	private static String createJson(String name, String email) {
@@ -82,6 +83,7 @@ class MemberControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content[0].name").value("Ana Pérez"))
 			.andExpect(jsonPath("$.content[0].email").value("ana@example.com"))
+			.andExpect(jsonPath("$.content[0].invitationsPaused").value(false))
 			.andExpect(jsonPath("$.page.totalElements").value(1))
 			.andExpect(jsonPath("$.page.size").value(20));
 
@@ -357,6 +359,39 @@ class MemberControllerTest {
 	@Test
 	void delete_withoutToken_returns401() throws Exception {
 		mockMvc.perform(delete("/api/members/" + ID).servletPath("/api")).andExpect(status().isUnauthorized());
+	}
+
+	// --- preferences link ---
+
+	@Test
+	void createPreferencesLink_withOwnMember_returns201WithUrlAndExpiry() throws Exception {
+		given(service.createPreferencesLink(any(), eq(ID)))
+			.willReturn(new PreferencesLinkResponse("https://app.example.com/m/preferences#t=abc", NOW.plusSeconds(60)));
+
+		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-link")))
+			.andExpect(status().isCreated())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.url").value("https://app.example.com/m/preferences#t=abc"))
+			.andExpect(jsonPath("$.expiresAt").value("2026-01-01T00:01:00Z"));
+
+		ArgumentCaptor<CurrentUser> user = ArgumentCaptor.forClass(CurrentUser.class);
+		verify(service).createPreferencesLink(user.capture(), eq(ID));
+		assertThat(user.getValue().groupId()).isEqualTo(GROUP_ID);
+	}
+
+	@Test
+	void createPreferencesLink_withoutToken_returns401() throws Exception {
+		mockMvc.perform(post("/api/members/" + ID + "/preferences-link").servletPath("/api"))
+			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void createPreferencesLink_withMemberFromAnotherGroup_returns404() throws Exception {
+		given(service.createPreferencesLink(any(), eq(ID))).willThrow(new NotFoundException("Member not found."));
+
+		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-link")))
+			.andExpect(status().isNotFound())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
 	}
 
 }

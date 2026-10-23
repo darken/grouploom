@@ -31,6 +31,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.member.dto.CreateMemberRequest;
 import io.grouploom.backend.member.dto.MemberResponse;
+import io.grouploom.backend.member.dto.PreferencesLinkResponse;
 import io.grouploom.backend.member.dto.UpdateMemberRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -92,6 +93,16 @@ public class MemberController {
 	public MemberResponse update(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID id,
 			@Valid @RequestBody UpdateMemberRequest request) {
 		return service.update(current, id, request);
+	}
+
+	@PostMapping("/{id}/preferences-link")
+	@ResponseStatus(HttpStatus.CREATED)
+	@Operation(summary = "Create a personal preferences link for a member",
+			description = "Each call issues a new link; earlier ones keep working until they expire or the member's email changes.")
+	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	public PreferencesLinkResponse createPreferencesLink(@Parameter(hidden = true) CurrentUser current,
+			@PathVariable UUID id) {
+		return service.createPreferencesLink(current, id);
 	}
 
 	@DeleteMapping("/{id}")

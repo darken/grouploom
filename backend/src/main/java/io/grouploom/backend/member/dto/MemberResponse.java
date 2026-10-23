@@ -11,5 +11,7 @@ public record MemberResponse(
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) String email,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) long version,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
-		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt) {
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED, accessMode = Schema.AccessMode.READ_ONLY,
+				description = "The member paused all invitations. Only the member can change this.") boolean invitationsPaused) {
 }

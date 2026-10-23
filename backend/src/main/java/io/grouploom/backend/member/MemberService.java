@@ -2,6 +2,7 @@ package io.grouploom.backend.member;
 
 import java.time.Clock;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -10,25 +11,38 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import io.grouploom.backend.auth.CurrentUser;
+import io.grouploom.backend.config.AppProperties;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.group.GroupRepository;
 import io.grouploom.backend.member.dto.CreateMemberRequest;
 import io.grouploom.backend.member.dto.MemberResponse;
+import io.grouploom.backend.member.dto.PreferencesLinkResponse;
 import io.grouploom.backend.member.dto.UpdateMemberRequest;
+import io.grouploom.backend.membertoken.MemberTokenPurpose;
+import io.grouploom.backend.membertoken.MemberTokenService;
+import io.grouploom.backend.preference.PreferenceService;
 
 @Service
 public class MemberService {
 
 	private final MemberRepository members;
 	private final GroupRepository groups;
+	private final MemberTokenService memberTokens;
+	private final PreferenceService preferences;
+	private final AppProperties properties;
 	private final Clock clock;
 
-	public MemberService(MemberRepository members, GroupRepository groups, Clock clock) {
+	public MemberService(MemberRepository members, GroupRepository groups, MemberTokenService memberTokens,
+			PreferenceService preferences, AppProperties properties, Clock clock) {
 		this.members = members;
 		this.groups = groups;
+		this.memberTokens = memberTokens;
+		this.preferences = preferences;
+		this.properties = properties;
 		this.clock = clock;
 	}
 
@@ -37,12 +51,14 @@ public class MemberService {
 		Page<Member> page = (q == null || q.isBlank())
 				? members.findAllByGroupId(current.groupId(), pageable)
 				: members.search(current.groupId(), likePattern(q), pageable);
-		return page.map(MemberMapper::toResponse);
+		Set<UUID> paused = preferences.pausedMemberIds(current.groupId());
+		return page.map(m -> MemberMapper.toResponse(m, paused.contains(m.getId())));
 	}
 
 	@Transactional(readOnly = true)
 	public MemberResponse get(CurrentUser current, UUID id) {
-		return MemberMapper.toResponse(find(current, id));
+		Member member = find(current, id);
+		return MemberMapper.toResponse(member, preferences.isPaused(member.getId()));
 	}
 
 	@Transactional
@@ -53,7 +69,7 @@ public class MemberService {
 			throw emailTaken();
 		}
 		Member created = new Member(groups.getReferenceById(current.groupId()), name, email, clock.instant());
-		return MemberMapper.toResponse(flush(created));
+		return MemberMapper.toResponse(flush(created), false);
 	}
 
 	@Transactional
@@ -66,8 +82,27 @@ public class MemberService {
 		if (members.existsByGroupIdAndEmailIgnoreCaseAndIdNot(current.groupId(), email, id)) {
 			throw emailTaken();
 		}
+		boolean emailChanged = !email.equals(member.getEmail());
 		member.update(request.name().trim(), email, clock.instant());
-		return MemberMapper.toResponse(flush(member));
+		Member saved = flush(member);
+		if (emailChanged) {
+			// Earlier links went to the old address.
+			memberTokens.revokeAll(saved);
+		}
+		return MemberMapper.toResponse(saved, preferences.isPaused(saved.getId()));
+	}
+
+	@Transactional
+	public PreferencesLinkResponse createPreferencesLink(CurrentUser current, UUID id) {
+		Member member = find(current, id);
+		var issued = memberTokens.issue(member, MemberTokenPurpose.PREFERENCES);
+		// The token goes in the fragment so it never reaches server logs or Referer headers.
+		String url = UriComponentsBuilder.fromUriString(properties.publicBaseUrl())
+			.path("/m/preferences")
+			.fragment("t=" + issued.raw())
+			.build()
+			.toUriString();
+		return new PreferencesLinkResponse(url, issued.expiresAt());
 	}
 
 	@Transactional

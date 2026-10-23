@@ -26,6 +26,8 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/system/info").permitAll()
 				.requestMatchers("/auth/signup", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
+				// Member endpoints: authorized in the service by validating the link token.
+				.requestMatchers("/public/**").permitAll()
 				.anyRequest().authenticated())
 			.exceptionHandling(e -> e.authenticationEntryPoint(handlers).accessDeniedHandler(handlers))
 			.oauth2ResourceServer(o -> o

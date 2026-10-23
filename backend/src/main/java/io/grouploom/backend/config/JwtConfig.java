@@ -22,7 +22,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 @Configuration
-@EnableConfigurationProperties({ JwtProperties.class, AuthProperties.class })
+@EnableConfigurationProperties({ JwtProperties.class, AuthProperties.class, AppProperties.class })
 public class JwtConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(JwtConfig.class);

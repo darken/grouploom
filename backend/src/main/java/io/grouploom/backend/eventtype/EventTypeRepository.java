@@ -1,5 +1,6 @@
 package io.grouploom.backend.eventtype;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,6 +13,8 @@ public interface EventTypeRepository extends JpaRepository<EventType, UUID> {
 	Optional<EventType> findByIdAndGroupId(UUID id, UUID groupId);
 
 	Page<EventType> findAllByGroupIdAndArchivedAtIsNull(UUID groupId, Pageable pageable);
+
+	List<EventType> findAllByGroupIdAndArchivedAtIsNull(UUID groupId);
 
 	Page<EventType> findAllByGroupIdAndArchivedAtIsNotNull(UUID groupId, Pageable pageable);
 

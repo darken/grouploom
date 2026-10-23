@@ -82,6 +82,16 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void invalidMemberToken_returns401ProblemDetailWithCode() throws Exception {
+		mockMvc.perform(get("/test/member-token-expired"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.status").value(401))
+			.andExpect(jsonPath("$.code").value("member-token.expired"))
+			.andExpect(jsonPath("$.detail").isNotEmpty());
+	}
+
+	@Test
 	void unknownSortProperty_returns400ProblemDetail() throws Exception {
 		mockMvc.perform(get("/test/bad-sort"))
 			.andExpect(status().isBadRequest())
@@ -131,6 +141,11 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/bad-request-plain")
 		void badRequestPlain() {
 			throw new BadRequestException("Bad.", "thing.bad", null);
+		}
+
+		@GetMapping("/test/member-token-expired")
+		void memberTokenExpired() {
+			throw new InvalidMemberTokenException("member-token.expired");
 		}
 
 		@GetMapping("/test/bad-sort")

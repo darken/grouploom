@@ -7,9 +7,9 @@ public final class MemberMapper {
 	private MemberMapper() {
 	}
 
-	public static MemberResponse toResponse(Member m) {
+	public static MemberResponse toResponse(Member m, boolean invitationsPaused) {
 		return new MemberResponse(m.getId(), m.getName(), m.getEmail(), m.getVersion(), m.getCreatedAt(),
-				m.getUpdatedAt());
+				m.getUpdatedAt(), invitationsPaused);
 	}
 
 }
