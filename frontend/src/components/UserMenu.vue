@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
+import { initials as initialsOf } from '@/ui/initials'
 
 const auth = useAuthStore()
 
@@ -10,14 +11,7 @@ const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
 const popover = ref<HTMLElement | null>(null)
 
-const initials = computed(() =>
-  (auth.user?.displayName ?? '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join(''),
-)
+const initials = computed(() => initialsOf(auth.user?.displayName ?? ''))
 
 function focusables(): HTMLElement[] {
   return Array.from(popover.value?.querySelectorAll<HTMLElement>('button, [href]') ?? [])

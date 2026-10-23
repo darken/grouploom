@@ -11,6 +11,7 @@ async function mountHeader(path: string) {
     routes: [
       { path: '/', component: { template: '<i/>' } },
       { path: '/event-types', component: { template: '<i/>' } },
+      { path: '/members', component: { template: '<i/>' } },
     ],
   })
   await router.push(path)
@@ -19,11 +20,11 @@ async function mountHeader(path: string) {
 }
 
 describe('AppHeader navigation', () => {
-  it('has Home and Event types links in a labelled nav', async () => {
+  it('has Home, Event types and Members links in a labelled nav', async () => {
     const wrapper = await mountHeader('/')
 
     const nav = wrapper.find('nav[aria-label=Primary]')
-    expect(nav.findAll('a').map((a) => a.text())).toEqual(['Home', 'Event types'])
+    expect(nav.findAll('a').map((a) => a.text())).toEqual(['Home', 'Event types', 'Members'])
   })
 
   it('marks only the current page link with aria-current', async () => {
@@ -31,5 +32,12 @@ describe('AppHeader navigation', () => {
 
     const current = wrapper.findAll('nav a').filter((a) => a.attributes('aria-current') === 'page')
     expect(current.map((a) => a.text())).toEqual(['Event types'])
+  })
+
+  it('marks Members as current on the members page', async () => {
+    const wrapper = await mountHeader('/members')
+
+    const current = wrapper.findAll('nav a').filter((a) => a.attributes('aria-current') === 'page')
+    expect(current.map((a) => a.text())).toEqual(['Members'])
   })
 })

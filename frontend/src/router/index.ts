@@ -41,6 +41,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
         meta: { title: 'Event types', requiresAuth: true },
       },
       {
+        path: '/members',
+        name: 'members',
+        component: () => import('@/views/MembersView.vue'),
+        meta: { title: 'Members', requiresAuth: true },
+      },
+      {
         path: '/login',
         name: 'login',
         component: () => import('@/views/LoginView.vue'),

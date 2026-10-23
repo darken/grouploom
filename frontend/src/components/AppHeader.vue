@@ -6,6 +6,7 @@ import UserMenu from './UserMenu.vue'
 const links = [
   { to: '/', label: 'Home' },
   { to: '/event-types', label: 'Event types' },
+  { to: '/members', label: 'Members' },
 ]
 </script>
 
