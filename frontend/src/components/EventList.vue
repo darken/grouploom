@@ -18,6 +18,7 @@ const props = defineProps<{
 const sections = computed(() => groupByDay(props.items, props.now ?? new Date()))
 
 function inProgress(event: EventItem): boolean {
+  if (event.cancelledAt) return false
   const now = (props.now ?? new Date()).getTime()
   return Date.parse(event.start) <= now && now < Date.parse(event.end)
 }
@@ -46,12 +47,13 @@ function inProgress(event: EventItem): boolean {
             <span
               data-color-bar
               class="w-[3px] shrink-0 rounded-full"
-              :class="eventTypeColor(event.eventType.color).dot"
+              :class="[eventTypeColor(event.eventType.color).dot, event.cancelledAt && 'opacity-40']"
               aria-hidden="true"
             />
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-2">
-                <span class="truncate font-medium">{{ event.title }}</span>
+                <span data-title class="truncate font-medium" :class="event.cancelledAt && 'text-[var(--app-muted)] line-through'">{{ event.title }}</span>
+                <span v-if="event.cancelledAt" data-cancelled class="shrink-0 text-sm text-[var(--app-danger)]">Cancelled</span>
                 <span
                   v-if="inProgress(event)"
                   class="shrink-0 rounded-full bg-[var(--app-accent)]/12 px-2 py-0.5 text-xs font-semibold text-[var(--app-accent)]"

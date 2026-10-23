@@ -12,6 +12,9 @@ const props = defineProps<{
   startError?: string
   endError?: string
   disabled?: boolean
+  /** Only the start date and time, e.g. for "send at"; the end is left untouched. */
+  single?: boolean
+  startLabel?: string
 }>()
 
 const endTouched = ref(props.endEdited ?? false)
@@ -21,6 +24,10 @@ const INPUT =
 
 function setStart(field: 'startDate' | 'startTime', value: string) {
   const next = { ...model.value, [field]: value }
+  if (props.single) {
+    model.value = next
+    return
+  }
   const before = wallClockMs(model.value.startDate, model.value.startTime)
   const after = wallClockMs(next.startDate, next.startTime)
   const end = wallClockMs(next.endDate, next.endTime)
@@ -53,7 +60,7 @@ watch(
 <template>
   <div class="space-y-4">
     <div>
-      <p class="mb-1.5 text-sm font-medium">Starts</p>
+      <p class="mb-1.5 text-sm font-medium">{{ startLabel ?? 'Starts' }}</p>
       <div class="flex gap-2">
         <input
           type="date"
@@ -79,7 +86,7 @@ watch(
       </div>
       <p v-if="startError" class="mt-1.5 text-sm text-[var(--app-danger)]">{{ startError }}</p>
     </div>
-    <div>
+    <div v-if="!single">
       <p class="mb-1.5 text-sm font-medium">Ends</p>
       <div class="flex gap-2">
         <input

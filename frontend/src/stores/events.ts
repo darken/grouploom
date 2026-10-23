@@ -15,6 +15,12 @@ export type EventWhen = 'upcoming' | 'past'
 /** What the event form emits: the edit fields additionally carry the version. */
 export type EventDraft = CreateEventInput & Partial<Pick<UpdateEventInput, 'version'>>
 
+export type CancelResult =
+  | { status: 'ok'; event: EventItem }
+  | { status: 'cancelled' | 'ended' | 'error' }
+
+export type RemoveResult = 'ok' | 'has-notifications' | 'error'
+
 const PAGE_SIZE = 20
 const NEXT_UP_SIZE = 3
 
@@ -150,21 +156,51 @@ export const useEventsStore = defineStore('events', () => {
     return true
   }
 
-  async function remove(id: string): Promise<boolean> {
+  /** A notified event can't be deleted (409 `event.has-notifications`); cancel it instead. */
+  async function remove(id: string): Promise<RemoveResult> {
     error.value = null
     try {
       const response = await api.DELETE('/events/{id}', { params: { path: { id } } })
       if (response.error !== undefined) unwrap({ ...response, data: undefined })
     } catch (e) {
-      error.value = toApiError(e)
-      return false
+      const failure = toApiError(e)
+      if (failure.status === 409 && failure.problem.code === 'event.has-notifications') return 'has-notifications'
+      error.value = failure
+      return 'error'
     }
     if (items.value.some((i) => i.id === id) && pageInfo.value) {
       pageInfo.value.totalElements = Math.max(0, pageInfo.value.totalElements - 1)
     }
     items.value = items.value.filter((i) => i.id !== id)
     if (current.value?.id === id) current.value = null
-    return true
+    return 'ok'
+  }
+
+  /** Cancelling keeps the event (and its history) and tells the members who were notified. */
+  async function cancel(id: string, message: string): Promise<CancelResult> {
+    saving.value = true
+    saveError.value = null
+    try {
+      const trimmed = message.trim()
+      const cancelled = unwrap(
+        await api.POST('/events/{id}/cancel', {
+          params: { path: { id } },
+          body: trimmed ? { message: trimmed } : {},
+        }),
+      )
+      if (current.value?.id === id) current.value = cancelled
+      items.value = items.value.map((i) => (i.id === id ? cancelled : i))
+      return { status: 'ok', event: cancelled }
+    } catch (e) {
+      const failure = toApiError(e)
+      saveError.value = failure
+      const code = failure.status === 409 ? failure.problem.code : undefined
+      if (code === 'event.cancelled') return { status: 'cancelled' }
+      if (code === 'event.ended') return { status: 'ended' }
+      return { status: 'error' }
+    } finally {
+      saving.value = false
+    }
   }
 
   function clearSaveError() {
@@ -176,6 +212,6 @@ export const useEventsStore = defineStore('events', () => {
     current, currentLoading, currentError,
     nextUp, nextUpLoaded, nextUpError,
     saving, saveError, stale, fieldErrors,
-    fetch, fetchOne, fetchNextUp, create, update, remove, clearSaveError,
+    fetch, fetchOne, fetchNextUp, create, update, remove, cancel, clearSaveError,
   }
 })

@@ -24,6 +24,7 @@ import io.grouploom.backend.notification.dto.EventNotificationResponse;
 import io.grouploom.backend.notification.dto.ScheduleNotificationRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -47,6 +48,8 @@ public class EventNotificationController {
 	@Operation(summary = "List an event's notifications",
 			description = "Not paged on purpose: the domain bounds the list (at most 10 scheduled notifications, plus the "
 					+ "ones already sent). Ordered by send time. Delivery counts come from the email outbox.")
+	@ApiResponse(responseCode = "200", description = "OK",
+			content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = EventNotificationResponse.class))))
 	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemDetail.class)))
 	public List<EventNotificationResponse> list(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID eventId) {
 		return service.list(current, eventId);
@@ -56,6 +59,8 @@ public class EventNotificationController {
 	@Operation(summary = "Preview who an invitation would reach",
 			description = "`eligible` counts members who aren't paused and haven't opted out of the event's type. "
 					+ "The real recipients are chosen when the notification is sent.")
+	@ApiResponse(responseCode = "200", description = "OK",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = AudienceResponse.class)))
 	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemDetail.class)))
 	public AudienceResponse audience(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID eventId) {
 		return service.audience(current, eventId);
@@ -65,6 +70,8 @@ public class EventNotificationController {
 	@ResponseStatus(HttpStatus.CREATED)
 	@Operation(summary = "Schedule a notification",
 			description = "Sends an invitation or reminder now, a number of minutes before the start, or at a custom time.")
+	@ApiResponse(responseCode = "201", description = "Created",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventNotificationResponse.class)))
 	@ApiResponse(responseCode = "400",
 			description = "Invalid input. Codes: notification.send-at-invalid (on offsetMinutes or localSendAt), notification.invalid-kind",
 			content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemDetail.class)))

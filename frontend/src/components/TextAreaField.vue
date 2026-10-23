@@ -28,6 +28,7 @@ const showCounter = computed(() => props.maxlength !== undefined && model.value.
       v-model="model"
       :name="name"
       :rows="rows ?? 3"
+      :maxlength="maxlength"
       :disabled="disabled"
       :aria-invalid="error ? 'true' : undefined"
       :aria-describedby="describedBy"

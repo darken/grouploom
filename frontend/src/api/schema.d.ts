@@ -76,6 +76,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/public/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unsubscribe from event emails
+         * @description Pauses invitations for the member the link belongs to. Safe to repeat. The `List-Unsubscribe=One-Click` body mail clients send is accepted and ignored.
+         */
+        post: operations["unsubscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/members": {
         parameters: {
             query?: never;
@@ -176,6 +196,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an event
+         * @description Keeps the event visible as cancelled. Scheduled notifications are dropped and members who were already notified get a cancellation email. There is no un-cancel.
+         */
+        post: operations["cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an event's notifications
+         * @description Not paged on purpose: the domain bounds the list (at most 10 scheduled notifications, plus the ones already sent). Ordered by send time. Delivery counts come from the email outbox.
+         */
+        get: operations["list_2"];
+        put?: never;
+        /**
+         * Schedule a notification
+         * @description Sends an invitation or reminder now, a number of minutes before the start, or at a custom time.
+         */
+        post: operations["schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/event-types": {
         parameters: {
             query?: never;
@@ -187,7 +251,7 @@ export interface paths {
          * List event types
          * @description Sortable properties: name, createdAt (e.g. `sort=name,asc`). Page size is capped at 100.
          */
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
         post: operations["create_2"];
         delete?: never;
@@ -287,6 +351,46 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/notifications/audience": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview who an invitation would reach
+         * @description `eligible` counts members who aren't paused and haven't opted out of the event's type. The real recipients are chosen when the notification is sent.
+         */
+        get: operations["audience"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/notifications/{notificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unschedule a notification
+         * @description Only while it is still scheduled.
+         */
+        delete: operations["unschedule"];
         options?: never;
         head?: never;
         patch?: never;
@@ -432,6 +536,12 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /**
+             * Format: date-time
+             * @description Set once the event is cancelled.
+             */
+            cancelledAt?: string;
+            cancellationMessage?: string;
         };
         EventTypeSummary: {
             /** Format: uuid */
@@ -511,6 +621,80 @@ export interface components {
             /** @example Europe/Madrid */
             timeZone: string;
         };
+        CancelEventRequest: {
+            /** @description Optional note shown on the event and in the cancellation email. */
+            message?: string;
+        };
+        ScheduleNotificationRequest: {
+            /**
+             * @description CANCELLATION is created by the system.
+             * @enum {string}
+             */
+            kind: "INVITATION" | "REMINDER";
+            /** @enum {string} */
+            timing: "NOW" | "BEFORE_START" | "AT";
+            /**
+             * Format: int32
+             * @description Minutes before the start; required for BEFORE_START (15 to 43200).
+             */
+            offsetMinutes?: number;
+            /**
+             * Format: date-time
+             * @description Wall-clock time in the event's time zone, without an offset; required for AT.
+             * @example 2026-11-01T10:00:00
+             */
+            localSendAt?: string;
+            /** @description Optional note from the organizer, shown in the email. */
+            message?: string;
+        };
+        DeliveryCounts: {
+            /**
+             * Format: int64
+             * @description Queued or being sent.
+             */
+            pending: number;
+            /** Format: int64 */
+            sent: number;
+            /** Format: int64 */
+            failed: number;
+        };
+        EventNotificationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "INVITATION" | "REMINDER" | "CANCELLATION";
+            /** @enum {string} */
+            status: "SCHEDULED" | "SENDING" | "SENT" | "CANCELLED";
+            /** Format: date-time */
+            sendAt: string;
+            /**
+             * Format: date-time
+             * @description sendAt as wall-clock time in timeZone, without an offset.
+             * @example 2026-11-01T10:00:00
+             */
+            localSendAt: string;
+            /**
+             * @description The event's time zone.
+             * @example Europe/Madrid
+             */
+            timeZone: string;
+            /**
+             * Format: int32
+             * @description Set for notifications sent a number of minutes before the start; they move with the event.
+             */
+            offsetMinutes?: number;
+            message?: string;
+            /**
+             * Format: int32
+             * @description How many members the notification was sent to; set once it has been sent.
+             */
+            recipientCount?: number;
+            delivery: components["schemas"]["DeliveryCounts"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt?: string;
+        };
         CreateEventTypeRequest: {
             name: string;
             description?: string;
@@ -574,6 +758,18 @@ export interface components {
         PagedModelEventResponse: {
             content: components["schemas"]["EventResponse"][];
             page: components["schemas"]["PageMetadata"];
+        };
+        AudienceResponse: {
+            /**
+             * Format: int32
+             * @description Members an invitation would reach right now.
+             */
+            eligible: number;
+            /**
+             * Format: int64
+             * @description Members in the group.
+             */
+            total: number;
         };
         PagedModelEventTypeResponse: {
             content: components["schemas"]["EventTypeResponse"][];
@@ -878,7 +1074,7 @@ export interface operations {
                     "application/json": components["schemas"]["EventResponse"];
                 };
             };
-            /** @description Invalid input. Codes: event.start-in-past, event.too-long, event.end-before-start, event.event-type-archived, event.event-type-not-found */
+            /** @description Invalid input. Codes: event.start-in-past, event.too-long, event.end-before-start, event.event-type-archived, event.event-type-not-found, event.notification-after-start (a scheduled absolute notification would fall after the new start) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -896,7 +1092,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description Stale version (code event.stale) */
+            /** @description Stale version (event.stale) or cancelled event (event.cancelled) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -936,6 +1132,15 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Members were already notified (event.has-notifications); cancel the event instead */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1076,6 +1281,53 @@ export interface operations {
             };
             /** @description Used by events (code event-type.in-use); archive it instead */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    unsubscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** @description The unsubscribe token from the email's List-Unsubscribe header */
+                    t?: string;
+                };
+                "*/*": {
+                    /** @description The unsubscribe token from the email's List-Unsubscribe header */
+                    t?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Invitations are paused */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid link (member-token.invalid) or expired link (member-token.expired) */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1351,7 +1603,7 @@ export interface operations {
                     "application/json": components["schemas"]["EventResponse"];
                 };
             };
-            /** @description Invalid input. Codes: event.start-in-past, event.too-long, event.end-before-start, event.event-type-archived, event.event-type-not-found */
+            /** @description Invalid input. Codes: event.start-in-past, event.too-long, event.end-before-start, event.event-type-archived, event.event-type-not-found, event.notification-after-start (a scheduled absolute notification would fall after the new start) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1371,7 +1623,171 @@ export interface operations {
             };
         };
     };
+    cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Already cancelled (event.cancelled) or already ended (event.ended) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     list_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventNotificationResponse"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleNotificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventNotificationResponse"];
+                };
+            };
+            /** @description Invalid input. Codes: notification.send-at-invalid (on offsetMinutes or localSendAt), notification.invalid-kind */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Limit of 10 scheduled notifications (notification.limit), cancelled event (event.cancelled) or event already started (event.started) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    list_3: {
         parameters: {
             query?: {
                 archived?: boolean;
@@ -1621,6 +2037,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    audience: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudienceResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    unschedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Already sent (notification.already-sent) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Error */

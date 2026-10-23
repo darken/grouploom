@@ -293,13 +293,13 @@ describe('events store', () => {
     expect(store.stale).toBe(false)
   })
 
-  it('remove deletes and returns true', async () => {
+  it('remove deletes and returns "ok"', async () => {
     del.mockResolvedValue({ response: new Response(null, { status: 204 }) })
     const store = useEventsStore()
 
-    const ok = await store.remove('1')
+    const result = await store.remove('1')
 
-    expect(ok).toBe(true)
+    expect(result).toBe('ok')
     expect(del).toHaveBeenCalledWith('/events/{id}', { params: { path: { id: '1' } } })
   })
 
@@ -322,9 +322,70 @@ describe('events store', () => {
     del.mockResolvedValue(problem(404))
     const store = useEventsStore()
 
-    const ok = await store.remove('1')
+    const result = await store.remove('1')
 
-    expect(ok).toBe(false)
+    expect(result).toBe('error')
     expect(store.error?.status).toBe(404)
+  })
+
+  it('remove maps the 409 event.has-notifications to a typed result and keeps the event', async () => {
+    get.mockResolvedValueOnce({ data: event('1'), response: new Response() })
+    del.mockResolvedValue(problem(409, { code: 'event.has-notifications' }))
+    const store = useEventsStore()
+    await store.fetchOne('1')
+
+    const result = await store.remove('1')
+
+    expect(result).toBe('has-notifications')
+    expect(store.error).toBeNull()
+    expect(store.current?.id).toBe('1')
+  })
+
+  it('cancel posts the message and updates current and the list item', async () => {
+    get.mockResolvedValueOnce(pageOf([event('1'), event('2')], 0, 2))
+    get.mockResolvedValueOnce({ data: event('1'), response: new Response() })
+    const store = useEventsStore()
+    await store.fetch({ when: 'upcoming', eventTypeId: '', page: 0 })
+    await store.fetchOne('1')
+    const cancelled = event('1', { cancelledAt: '2026-10-20T08:00:00Z', cancellationMessage: 'Gym closed', version: 4 })
+    post.mockResolvedValue({ data: cancelled, response: new Response() })
+
+    const result = await store.cancel('1', 'Gym closed')
+
+    expect(post).toHaveBeenCalledWith('/events/{id}/cancel', {
+      params: { path: { id: '1' } },
+      body: { message: 'Gym closed' },
+    })
+    expect(result).toEqual({ status: 'ok', event: cancelled })
+    expect(store.current?.cancelledAt).toBe('2026-10-20T08:00:00Z')
+    expect(store.items.find((i) => i.id === '1')?.cancelledAt).toBe('2026-10-20T08:00:00Z')
+    expect(store.items.find((i) => i.id === '2')?.cancelledAt).toBeUndefined()
+  })
+
+  it('cancel without a message sends none', async () => {
+    post.mockResolvedValue({ data: event('1', { cancelledAt: '2026-10-20T08:00:00Z' }), response: new Response() })
+    const store = useEventsStore()
+
+    await store.cancel('1', '  ')
+
+    expect(post).toHaveBeenCalledWith('/events/{id}/cancel', { params: { path: { id: '1' } }, body: {} })
+  })
+
+  it.each([
+    ['event.cancelled', 'cancelled'],
+    ['event.ended', 'ended'],
+  ])('cancel maps the 409 %s to the typed result %s', async (code, status) => {
+    post.mockResolvedValue(problem(409, { code }))
+    const store = useEventsStore()
+
+    expect(await store.cancel('1', '')).toEqual({ status })
+  })
+
+  it('cancel keeps other failures as an error', async () => {
+    post.mockResolvedValue(problem(500))
+    const store = useEventsStore()
+
+    expect(await store.cancel('1', '')).toEqual({ status: 'error' })
+    expect(store.saveError?.status).toBe(500)
   })
 })

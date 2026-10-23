@@ -6,19 +6,25 @@ import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import CancelEventDialog from '@/components/CancelEventDialog.vue'
 import ErrorBanner from '@/components/ErrorBanner.vue'
 import EventForm from '@/components/EventForm.vue'
+import NotificationList from '@/components/NotificationList.vue'
+import ScheduleNotificationDialog from '@/components/ScheduleNotificationDialog.vue'
 import { useToast } from '@/composables/useToast'
+import { useEventNotificationsStore, type ScheduleNotificationInput } from '@/stores/eventNotifications'
 import { useEventTypesStore } from '@/stores/eventTypes'
 import { useEventsStore, type EventDraft } from '@/stores/events'
 import { eventTypeColor } from '@/ui/eventTypeColors'
 import { formatEventTime } from '@/ui/formatEventTime'
+import { describeSendTime, formatMonthDay } from '@/ui/notificationText'
 import { browserTimeZone } from '@/ui/timeZones'
 
 const route = useRoute()
 const router = useRouter()
 const store = useEventsStore()
 const eventTypes = useEventTypesStore()
+const notifications = useEventNotificationsStore()
 const toast = useToast()
 
 const id = computed(() => String(route.params.id))
@@ -27,7 +33,15 @@ const listQuery = computed(() => route.query)
 const event = computed(() => store.current)
 const notFound = computed(() => store.currentError?.status === 404)
 
-watch(id, (value) => store.fetchOne(value), { immediate: true })
+watch(
+  id,
+  (value) => {
+    void store.fetchOne(value)
+    void notifications.fetch(value)
+    notifications.start(value)
+  },
+  { immediate: true },
+)
 
 watch(
   () => event.value?.title,
@@ -65,13 +79,17 @@ async function reloadAfterStale() {
 const menuOpen = ref(false)
 const menu = ref<HTMLElement | null>(null)
 const confirmingDelete = ref(false)
+const deleteBlocked = ref(false)
 
 function onPointerDown(e: Event) {
   if (menuOpen.value && menu.value && !menu.value.contains(e.target as Node)) menuOpen.value = false
 }
 
 onMounted(() => document.addEventListener('pointerdown', onPointerDown))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown))
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointerDown)
+  notifications.stop()
+})
 
 function askDelete() {
   menuOpen.value = false
@@ -82,10 +100,91 @@ async function confirmDelete() {
   confirmingDelete.value = false
   const current = event.value
   if (!current) return
-  if (await store.remove(current.id)) {
+  const result = await store.remove(current.id)
+  if (result === 'ok') {
     toast.show('Deleted')
     await router.push({ path: '/events', query: listQuery.value })
+  } else if (result === 'has-notifications') {
+    deleteBlocked.value = true
   }
+}
+
+// --- cancel ---
+const cancelling = ref(false)
+const cancelError = ref('')
+
+const cancelled = computed(() => Boolean(event.value?.cancelledAt))
+const started = computed(() => (event.value ? Date.parse(event.value.start) <= Date.now() : false))
+const ended = computed(() => (event.value ? Date.parse(event.value.end) <= Date.now() : false))
+const canCancel = computed(() => !cancelled.value && !ended.value)
+const canSchedule = computed(() => !cancelled.value && !started.value)
+const notified = computed(() => notifications.items.some((n) => n.status === 'SENT' || n.status === 'SENDING'))
+
+function openCancel() {
+  menuOpen.value = false
+  deleteBlocked.value = false
+  cancelError.value = ''
+  cancelling.value = true
+}
+
+async function submitCancel(message: string) {
+  const current = event.value
+  if (!current) return
+  const result = await store.cancel(current.id, message)
+  if (result.status === 'ok') {
+    cancelling.value = false
+    toast.show('Event cancelled')
+    void notifications.fetch(current.id)
+  } else if (result.status === 'cancelled') {
+    cancelError.value = 'This event is already cancelled.'
+  } else if (result.status === 'ended') {
+    cancelError.value = 'This event has already ended.'
+  } else {
+    cancelError.value = store.saveError?.message ?? 'Could not cancel the event. Try again.'
+  }
+}
+
+// --- notifications ---
+const scheduling = ref(false)
+const scheduleError = ref('')
+
+function openSchedule() {
+  const current = event.value
+  if (!current) return
+  notifications.clearSaveError()
+  scheduleError.value = ''
+  void notifications.fetchAudience(current.id)
+  scheduling.value = true
+}
+
+const SCHEDULE_MESSAGES = {
+  limit: 'This event already has 10 scheduled notifications. Unschedule one first.',
+  cancelled: 'This event was cancelled.',
+  started: 'This event has already started.',
+  error: 'Could not schedule the notification. Try again.',
+} as const
+
+async function submitSchedule(input: ScheduleNotificationInput) {
+  const word = input.kind === 'INVITATION' ? 'Invitation' : 'Reminder'
+  const result = await notifications.schedule(input, (delivered) => {
+    const count = delivered?.recipientCount
+    if (count === undefined) return
+    toast.show(count === 0 ? 'No one to notify' : `${word} sent to ${count} ${count === 1 ? 'member' : 'members'}`)
+  })
+  if (result.status === 'ok') {
+    scheduling.value = false
+    toast.show(
+      input.timing === 'NOW' ? `Sending ${word.toLowerCase()}…` : `${word} scheduled for ${describeSendTime(result.notification)}`,
+    )
+  } else if (result.status !== 'invalid') {
+    scheduleError.value = SCHEDULE_MESSAGES[result.status]
+  }
+}
+
+async function unschedule(notificationId: string) {
+  const result = await notifications.unschedule(notificationId)
+  if (result.status === 'ok') toast.show('Unscheduled')
+  else if (result.status === 'already-sent') toast.show('That notification was already sent.')
 }
 </script>
 
@@ -129,7 +228,7 @@ async function confirmDelete() {
       <div class="flex items-start justify-between gap-4">
         <h1 class="min-w-0 text-4xl font-semibold tracking-tight break-words sm:text-5xl">{{ event.title }}</h1>
         <div class="flex shrink-0 items-center gap-2 pt-1">
-          <BaseButton variant="secondary" @click="openForm">Edit</BaseButton>
+          <BaseButton v-if="!cancelled" variant="secondary" @click="openForm">Edit</BaseButton>
           <div ref="menu" class="relative">
             <button
               type="button"
@@ -149,11 +248,17 @@ async function confirmDelete() {
               class="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-[var(--app-line)]/60 bg-[var(--app-surface)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.1)]"
               @keydown.esc="menuOpen = false"
             >
+              <button v-if="canCancel" role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="openCancel">Cancel event…</button>
               <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="askDelete">Delete</button>
             </div>
           </div>
         </div>
       </div>
+
+      <p v-if="event.cancelledAt" data-cancelled-banner class="mt-3 rounded-xl bg-[var(--app-fill)] px-4 py-3 text-[15px]">
+        <span class="font-medium text-[var(--app-danger)]">Cancelled · {{ formatMonthDay(event.cancelledAt, event.timeZone) }}</span>
+        <span v-if="event.cancellationMessage" class="mt-1 block whitespace-pre-line text-[var(--app-muted)]">{{ event.cancellationMessage }}</span>
+      </p>
 
       <p
         data-type-chip
@@ -176,6 +281,24 @@ async function confirmDelete() {
       </p>
 
       <p v-if="event.description" data-description class="mt-6 max-w-2xl text-[17px] leading-relaxed whitespace-pre-line">{{ event.description }}</p>
+
+      <section data-notifications class="mt-10" aria-labelledby="notifications-heading">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <h2 id="notifications-heading" class="text-xl font-semibold tracking-tight">Notifications</h2>
+          <BaseButton v-if="canSchedule" variant="secondary" @click="openSchedule">Schedule…</BaseButton>
+        </div>
+        <ErrorBanner v-if="notifications.error && !notifications.loaded" :error="notifications.error">
+          <BaseButton variant="plain" @click="notifications.fetch(event.id)">Retry</BaseButton>
+        </ErrorBanner>
+        <NotificationList v-else-if="notifications.items.length > 0" :items="notifications.items" @unschedule="unschedule" />
+        <EmptyState
+          v-else-if="notifications.loaded"
+          title="No notifications yet."
+          :description="canSchedule ? 'Invite members to this event by email.' : undefined"
+        >
+          <BaseButton v-if="canSchedule" @click="openSchedule">Schedule invitation</BaseButton>
+        </EmptyState>
+      </section>
     </article>
 
     <BaseDialog :open="formOpen" title="Edit event" @close="formOpen = false">
@@ -199,6 +322,48 @@ async function confirmDelete() {
         @cancel="formOpen = false"
       />
     </BaseDialog>
+
+    <ScheduleNotificationDialog
+      v-if="event"
+      :open="scheduling"
+      :event="event"
+      :audience="notifications.audience"
+      :saving="notifications.saving"
+      :field-errors="notifications.fieldErrors"
+      :error="scheduleError"
+      @submit="submitSchedule"
+      @close="scheduling = false"
+    />
+
+    <CancelEventDialog
+      :open="cancelling"
+      :title="event?.title ?? ''"
+      :notified="notified"
+      :saving="store.saving"
+      :error="cancelError"
+      @submit="submitCancel"
+      @close="cancelling = false"
+    />
+
+    <ConfirmDialog
+      v-if="event?.cancelledAt"
+      :open="deleteBlocked"
+      :title="`Can't delete '${event.title}'`"
+      message="Members were notified about this event, so it can't be deleted."
+      confirm-label="OK"
+      hide-cancel
+      @confirm="deleteBlocked = false"
+      @cancel="deleteBlocked = false"
+    />
+    <ConfirmDialog
+      v-else
+      :open="deleteBlocked"
+      :title="`Delete '${event?.title ?? ''}'?`"
+      message="Members were notified about this event. Cancel it instead?"
+      confirm-label="Cancel event…"
+      @confirm="openCancel"
+      @cancel="deleteBlocked = false"
+    />
 
     <ConfirmDialog
       :open="confirmingDelete"

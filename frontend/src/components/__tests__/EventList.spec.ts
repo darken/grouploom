@@ -124,4 +124,23 @@ describe('EventList', () => {
 
     expect(wrapper.find('li a').attributes('href')).toBe('/events/abc?when=past&page=2')
   })
+
+  it('shows a cancelled event with a struck-through title, "Cancelled" in red and a dimmed color bar', async () => {
+    const { wrapper } = await mountList([event('1', { cancelledAt: '2026-10-20T08:00:00Z' }), event('2')])
+
+    const [cancelled, normal] = wrapper.findAll('li')
+    expect(cancelled!.find('[data-title]').classes()).toContain('line-through')
+    expect(cancelled!.find('[data-cancelled]').text()).toBe('Cancelled')
+    expect(cancelled!.find('[data-cancelled]').classes().join(' ')).toContain('danger')
+    expect(cancelled!.find('[data-color-bar]').classes().join(' ')).toContain('opacity-')
+    expect(normal!.find('[data-title]').classes()).not.toContain('line-through')
+    expect(normal!.find('[data-cancelled]').exists()).toBe(false)
+    expect(normal!.find('[data-color-bar]').classes().join(' ')).not.toContain('opacity-')
+  })
+
+  it('does not mark a cancelled event as "Now" even while it would be in progress', async () => {
+    const { wrapper } = await mountList([event('1', { cancelledAt: '2026-10-20T08:00:00Z' })], new Date('2026-11-02T09:30:00Z'))
+
+    expect(wrapper.text()).not.toContain('Now')
+  })
 })

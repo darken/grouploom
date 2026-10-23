@@ -101,4 +101,23 @@ describe('DateTimeFields', () => {
     expect(wrapper.find('input[aria-label="Start date"]').attributes('aria-invalid')).toBe('true')
     expect(wrapper.find('input[aria-label="End date"]').attributes('aria-invalid')).toBe('true')
   })
+
+  it('in single mode shows only the start pair, under the given label', () => {
+    const wrapper = mount(DateTimeFields, { props: { modelValue: value, single: true, startLabel: 'Send at' } })
+
+    expect(wrapper.find('input[aria-label="Start date"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="Start time"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="End date"]').exists()).toBe(false)
+    expect(wrapper.find('input[aria-label="End time"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Send at')
+    expect(wrapper.text()).not.toContain('Ends')
+  })
+
+  it('in single mode emits only the changed start field and leaves the end alone', async () => {
+    const wrapper = mount(DateTimeFields, { props: { modelValue: value, single: true } })
+
+    await wrapper.find('input[aria-label="Start time"]').setValue('12:00')
+
+    expect(lastEmitted(wrapper)).toEqual({ ...value, startTime: '12:00' })
+  })
 })

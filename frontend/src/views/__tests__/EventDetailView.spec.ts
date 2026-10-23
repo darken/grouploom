@@ -20,6 +20,7 @@ vi.mock('@/api/client', () => ({
 }))
 
 const get = vi.mocked(api.GET) as unknown as ReturnType<typeof vi.fn>
+const post = vi.mocked(api.POST) as unknown as ReturnType<typeof vi.fn>
 const put = vi.mocked(api.PUT) as unknown as ReturnType<typeof vi.fn>
 const del = vi.mocked(api.DELETE) as unknown as ReturnType<typeof vi.fn>
 
@@ -49,8 +50,31 @@ function typePage() {
   return { data: { content: [t], page: { number: 0, size: 100, totalElements: 1, totalPages: 1 } }, response: new Response() }
 }
 
+let notificationItems: object[] = []
+
+function notification(overrides: object = {}) {
+  return {
+    id: 'n1',
+    kind: 'REMINDER',
+    status: 'SCHEDULED',
+    sendAt: '2099-11-01T09:00:00Z',
+    localSendAt: '2099-11-01T10:00:00',
+    timeZone: 'Europe/Madrid',
+    delivery: { pending: 0, sent: 0, failed: 0 },
+    createdAt: '2099-10-01T12:00:00Z',
+    ...overrides,
+  }
+}
+
 function serve(result: () => unknown) {
-  get.mockImplementation(async (path: string) => (path === '/event-types' ? typePage() : result()))
+  get.mockImplementation(async (path: string) => {
+    if (path === '/event-types') return typePage()
+    if (path === '/events/{eventId}/notifications') return { data: notificationItems, response: new Response() }
+    if (path === '/events/{eventId}/notifications/audience') {
+      return { data: { eligible: 18, total: 24 }, response: new Response() }
+    }
+    return result()
+  })
 }
 
 const found = (overrides: object = {}) => () => ({ data: event(overrides), response: new Response() })
@@ -81,7 +105,8 @@ const button = (w: Wrapper, label: string) => w.findAll('button').find((b) => b.
 
 describe('EventDetailView', () => {
   beforeEach(() => {
-    for (const m of [get, put, del]) m.mockReset()
+    for (const m of [get, post, put, del]) m.mockReset()
+    notificationItems = []
     useToast().dismiss()
     document.body.innerHTML = ''
   })
@@ -150,7 +175,11 @@ describe('EventDetailView', () => {
 
   it('shows a loading skeleton, then the event', async () => {
     let resolve!: (v: unknown) => void
-    get.mockImplementation(async (path: string) => (path === '/event-types' ? typePage() : new Promise((r) => (resolve = r))))
+    get.mockImplementation(async (path: string) => {
+      if (path === '/event-types') return typePage()
+      if (path.startsWith('/events/{eventId}')) return { data: [], response: new Response() }
+      return new Promise((r) => (resolve = r))
+    })
     const { wrapper } = await mountView()
 
     expect(wrapper.find('[data-skeleton]').exists()).toBe(true)
@@ -254,5 +283,232 @@ describe('EventDetailView', () => {
 
     expect(del).not.toHaveBeenCalled()
     expect(dialogOpen(wrapper)).toHaveLength(0)
+  })
+
+  // --- cancelled events ---
+
+  const CANCELLED = { cancelledAt: '2099-10-20T08:00:00Z', cancellationMessage: 'The gym is closed' }
+
+  it('shows a quiet banner for a cancelled event, hides Edit and Schedule, and leaves only Delete in the menu', async () => {
+    serve(found(CANCELLED))
+
+    const { wrapper } = await mountView()
+
+    const banner = wrapper.find('[data-cancelled-banner]')
+    expect(banner.text()).toContain('Cancelled · Oct 20')
+    expect(banner.text()).toContain('The gym is closed')
+    expect(button(wrapper, 'Edit')).toBeUndefined()
+    expect(button(wrapper, 'Schedule…')).toBeUndefined()
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+    expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Delete'])
+  })
+
+  it('shows the banner without a message when there is none', async () => {
+    serve(found({ cancelledAt: '2099-10-20T08:00:00Z' }))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find('[data-cancelled-banner]').text()).toBe('Cancelled · Oct 20')
+  })
+
+  it('offers "Cancel event…" above Delete for an upcoming event', async () => {
+    serve(found())
+    const { wrapper } = await mountView()
+
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+
+    const items = wrapper.findAll('[role=menuitem]')
+    expect(items.map((m) => m.text())).toEqual(['Cancel event…', 'Delete'])
+    expect(items[0]!.classes().join(' ')).toContain('danger')
+  })
+
+  it('does not offer cancelling for an event that has ended', async () => {
+    serve(found({ start: '2020-11-02T09:00:00Z', end: '2020-11-02T11:00:00Z' }))
+    const { wrapper } = await mountView()
+
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+
+    expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Delete'])
+  })
+
+  it('cancels from the menu: explains who is told, posts the message, then shows the banner and a toast', async () => {
+    notificationItems = [notification({ kind: 'INVITATION', status: 'SENT', sentAt: '2099-10-01T12:00:00Z', recipientCount: 4 })]
+    serve(found())
+    post.mockResolvedValue({ data: event(CANCELLED), response: new Response() })
+    const { wrapper } = await mountView()
+
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Cancel event…')!.trigger('click')
+
+    const dialog = dialogOpen(wrapper)[0]!
+    expect(dialog.find('h2').text()).toBe("Cancel 'Rehearsal'?")
+    expect(dialog.text()).toContain('Members who were notified will get a cancellation email.')
+    await dialog.find('textarea').setValue('The gym is closed')
+    await dialog.findAll('button').find((b) => b.text() === 'Cancel event')!.trigger('click')
+    await flushPromises()
+
+    expect(post).toHaveBeenCalledWith('/events/{id}/cancel', {
+      params: { path: { id: 'e1' } },
+      body: { message: 'The gym is closed' },
+    })
+    expect(dialogOpen(wrapper)).toHaveLength(0)
+    expect(wrapper.find('[data-cancelled-banner]').text()).toContain('The gym is closed')
+    expect(wrapper.find('[aria-live=polite]').text()).toContain('Event cancelled')
+  })
+
+  it('says no one has been notified when nothing was sent', async () => {
+    serve(found())
+    const { wrapper } = await mountView()
+
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Cancel event…')!.trigger('click')
+
+    expect(dialogOpen(wrapper)[0]!.text()).toContain('No one has been notified yet.')
+  })
+
+  // --- delete after notifying ---
+
+  it('switches the delete dialog to "Cancel it instead?" when members were notified, and opens the cancel dialog', async () => {
+    serve(found())
+    del.mockResolvedValue({ error: { status: 409, code: 'event.has-notifications' }, response: new Response(null, { status: 409 }) })
+    const { wrapper } = await mountView()
+
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Delete')!.trigger('click')
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Delete')!.trigger('click')
+    await flushPromises()
+
+    const blocked = dialogOpen(wrapper)[0]!
+    expect(blocked.text()).toContain('Members were notified about this event. Cancel it instead?')
+    expect(wrapper.find('[aria-live=polite]').text()).not.toContain('Deleted')
+    await blocked.findAll('button').find((b) => b.text() === 'Cancel event…')!.trigger('click')
+    await flushPromises()
+
+    expect(dialogOpen(wrapper).map((d) => d.find('h2').text())).toEqual(["Cancel 'Rehearsal'?"])
+  })
+
+  it('explains that a cancelled event that was notified cannot be deleted, with no way to cancel again', async () => {
+    serve(found(CANCELLED))
+    del.mockResolvedValue({ error: { status: 409, code: 'event.has-notifications' }, response: new Response(null, { status: 409 }) })
+    const { wrapper } = await mountView()
+
+    await wrapper.find('button[aria-label="More actions"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Delete')!.trigger('click')
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Delete')!.trigger('click')
+    await flushPromises()
+
+    const blocked = dialogOpen(wrapper)[0]!
+    expect(blocked.text()).toContain("Members were notified about this event, so it can't be deleted.")
+    expect(blocked.findAll('button').map((b) => b.text())).toEqual(['OK'])
+  })
+
+  // --- notifications ---
+
+  it('shows the empty state with a call to action when nothing is scheduled', async () => {
+    serve(found())
+
+    const { wrapper } = await mountView()
+
+    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications', { params: { path: { eventId: 'e1' } } })
+    const section = wrapper.find('[data-notifications]')
+    expect(section.find('h2').text()).toBe('Notifications')
+    expect(section.text()).toContain('No notifications yet.')
+    expect(section.text()).toContain('Invite members to this event by email.')
+    expect(button(wrapper, 'Schedule invitation')).toBeDefined()
+    expect(button(wrapper, 'Schedule…')).toBeDefined()
+  })
+
+  it('lists the notifications, with Unschedule for scheduled ones', async () => {
+    notificationItems = [notification()]
+    serve(found())
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find('[data-notifications] li [data-kind]').text()).toBe('Reminder')
+    expect(wrapper.text()).not.toContain('No notifications yet.')
+    expect(button(wrapper, 'Schedule invitation')).toBeUndefined()
+  })
+
+  it('hides "Schedule…" and the call to action once the event has started', async () => {
+    serve(found({ start: '2020-11-02T09:00:00Z', end: '2099-11-02T11:00:00Z' }))
+
+    const { wrapper } = await mountView()
+
+    expect(button(wrapper, 'Schedule…')).toBeUndefined()
+    expect(button(wrapper, 'Schedule invitation')).toBeUndefined()
+    expect(wrapper.find('[data-notifications]').exists()).toBe(true)
+  })
+
+  it('schedules an invitation now: loads the audience, posts, closes and toasts "Sending invitation…"', async () => {
+    serve(found())
+    post.mockResolvedValue({ data: notification({ kind: 'INVITATION', sendAt: '2099-01-01T00:00:00Z' }), response: new Response() })
+    const { wrapper } = await mountView()
+
+    await button(wrapper, 'Schedule invitation')!.trigger('click')
+    await flushPromises()
+    const dialog = dialogOpen(wrapper)[0]!
+    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications/audience', { params: { path: { eventId: 'e1' } } })
+    expect(dialog.find('[data-audience]').text()).toContain('Will be sent to 18 of 24 members.')
+    await dialog.findAll('button').find((b) => b.text() === 'Send now')!.trigger('click')
+    await flushPromises()
+
+    expect(post).toHaveBeenCalledWith('/events/{eventId}/notifications', {
+      params: { path: { eventId: 'e1' } },
+      body: { kind: 'INVITATION', timing: 'NOW' },
+    })
+    expect(dialogOpen(wrapper)).toHaveLength(0)
+    expect(wrapper.find('[aria-live=polite]').text()).toContain('Sending invitation…')
+  })
+
+  it('schedules a reminder and toasts when it will go out', async () => {
+    serve(found())
+    post.mockResolvedValue({ data: notification(), response: new Response() })
+    const { wrapper } = await mountView()
+
+    await button(wrapper, 'Schedule…')!.trigger('click')
+    await flushPromises()
+    const dialog = dialogOpen(wrapper)[0]!
+    await dialog.findAll('[role=radio]')[1]!.trigger('click')
+    await dialog.findAll('input[name=timing]')[2]!.setValue(true)
+    await dialog.findAll('button').find((b) => b.text() === 'Schedule')!.trigger('click')
+    await flushPromises()
+
+    expect(post).toHaveBeenCalledWith('/events/{eventId}/notifications', {
+      params: { path: { eventId: 'e1' } },
+      body: { kind: 'REMINDER', timing: 'BEFORE_START', offsetMinutes: 1440 },
+    })
+    expect(wrapper.find('[aria-live=polite]').text()).toContain('Reminder scheduled for Sun, Nov 1, 10:00')
+    expect(wrapper.find('[data-notifications] li').exists()).toBe(true)
+  })
+
+  it('keeps the dialog open and explains when the limit is reached', async () => {
+    serve(found())
+    post.mockResolvedValue({ error: { status: 409, code: 'notification.limit' }, response: new Response(null, { status: 409 }) })
+    const { wrapper } = await mountView()
+
+    await button(wrapper, 'Schedule…')!.trigger('click')
+    await flushPromises()
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Send now')!.trigger('click')
+    await flushPromises()
+
+    expect(dialogOpen(wrapper)).toHaveLength(1)
+    expect(dialogOpen(wrapper)[0]!.text()).toContain('10 scheduled notifications')
+  })
+
+  it('unschedules a notification and toasts', async () => {
+    notificationItems = [notification()]
+    serve(found())
+    del.mockResolvedValue({ response: new Response(null, { status: 204 }) })
+    const { wrapper } = await mountView()
+
+    await wrapper.find('[data-notifications] button[aria-haspopup=menu]').trigger('click')
+    await wrapper.find('[data-notifications] [role=menuitem]').trigger('click')
+    await flushPromises()
+
+    expect(del).toHaveBeenCalledWith('/events/{eventId}/notifications/{notificationId}', {
+      params: { path: { eventId: 'e1', notificationId: 'n1' } },
+    })
+    expect(wrapper.find('[data-notifications] li').exists()).toBe(false)
+    expect(wrapper.find('[aria-live=polite]').text()).toContain('Unscheduled')
   })
 })
