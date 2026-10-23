@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 
-import type { Member } from '@/stores/members'
+import { useToast } from '@/composables/useToast'
+import { useMembersStore, type Member } from '@/stores/members'
 import { highlight } from '@/ui/highlight'
+import BaseButton from './BaseButton.vue'
+import BaseDialog from './BaseDialog.vue'
 import MemberAvatar from './MemberAvatar.vue'
 
 defineProps<{ items: Member[]; query?: string }>()
@@ -45,10 +48,57 @@ function onMenuKeydown(event: KeyboardEvent) {
   items[next]?.focus()
 }
 
-function choose(action: 'edit' | 'remove', item: Member) {
+function choose(action: 'edit' | 'remove' | 'copy-link', item: Member) {
   closeMenu()
   if (action === 'edit') emit('edit', item)
-  else emit('remove', item)
+  else if (action === 'remove') emit('remove', item)
+  else void copyLink(item)
+}
+
+// --- preferences link ---
+const toast = useToast()
+// Set when the clipboard can't be written to, so the organizer can copy the link by hand.
+const fallback = ref<{ name: string; url: string } | null>(null)
+const linkField = useTemplateRef<HTMLInputElement>('linkField')
+
+function lifetime(expiresAt: string): string {
+  const days = Math.max(1, Math.round((Date.parse(expiresAt) - Date.now()) / 86_400_000))
+  return `${days} ${days === 1 ? 'day' : 'days'}`
+}
+
+async function copyLink(item: Member) {
+  // Looked up here, not at setup, so the list stays presentational until this action is used.
+  const link = await useMembersStore().createPreferencesLink(item.id)
+  if (!link) {
+    toast.show("Couldn't create the link. Try again.")
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(link.url)
+    toast.show(`Link copied. It works for ${lifetime(link.expiresAt)}.`)
+  } catch {
+    // No clipboard API (insecure context) or the browser refused (e.g. Safari after an awaited request).
+    fallback.value = { name: item.name, url: link.url }
+    await nextTick()
+    await nextTick()
+    linkField.value?.focus()
+    linkField.value?.select()
+  }
+}
+
+function closeFallback() {
+  const name = fallback.value?.name
+  fallback.value = null
+  // The dialog is removed rather than closed, so hand focus back to the row's actions button ourselves.
+  void nextTick(() => root.value?.querySelector<HTMLElement>(`button[aria-label="Actions for ${name}"]`)?.focus())
+}
+
+function copyFromField() {
+  linkField.value?.select()
+  if (document.execCommand?.('copy')) {
+    toast.show('Link copied.')
+    closeFallback()
+  }
 }
 
 function onPointerDown(event: Event) {
@@ -75,11 +125,19 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
       >
         <MemberAvatar :id="item.id" :name="item.name" />
         <span class="min-w-0 flex-1">
-          <span class="block truncate font-medium">
-            <template v-for="(part, i) in highlight(item.name, query ?? '')" :key="i">
-              <strong v-if="part.match" data-match class="font-bold">{{ part.text }}</strong>
-              <template v-else>{{ part.text }}</template>
-            </template>
+          <span class="flex items-center gap-2">
+            <span class="truncate font-medium">
+              <template v-for="(part, i) in highlight(item.name, query ?? '')" :key="i">
+                <strong v-if="part.match" data-match class="font-bold">{{ part.text }}</strong>
+                <template v-else>{{ part.text }}</template>
+              </template>
+            </span>
+            <span
+              v-if="item.invitationsPaused"
+              data-paused
+              class="shrink-0 rounded-full bg-[var(--app-fill)] px-2 py-0.5 text-xs font-medium text-[var(--app-muted)]"
+              >Paused</span
+            >
           </span>
           <span class="block truncate text-sm text-[var(--app-muted)]">
             <template v-for="(part, i) in highlight(item.email, query ?? '')" :key="i">
@@ -105,13 +163,33 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
         <div
           v-if="openId === item.id"
           role="menu"
-          class="absolute right-3 z-10 mt-1 w-44 rounded-xl border border-[var(--app-line)]/60 bg-[var(--app-surface)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.1)]"
+          class="absolute right-3 z-10 mt-1 w-56 rounded-xl border border-[var(--app-line)]/60 bg-[var(--app-surface)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.1)]"
           @keydown="onMenuKeydown"
         >
           <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] hover:bg-[var(--app-fill)]" @click="choose('edit', item)">Edit</button>
+          <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] hover:bg-[var(--app-fill)]" @click="choose('copy-link', item)">Copy preferences link</button>
           <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="choose('remove', item)">Remove</button>
         </div>
       </div>
     </li>
   </ul>
+
+  <BaseDialog v-if="fallback" title="Preferences link" open @close="closeFallback">
+    <p class="mb-3 text-[15px] text-[var(--app-muted)]">
+      Copy this link and send it to {{ fallback.name }}. It's personal to them.
+    </p>
+    <input
+      ref="linkField"
+      type="text"
+      readonly
+      :value="fallback.url"
+      aria-label="Preferences link"
+      class="min-h-11 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-fill)] px-3 text-[15px]"
+      @focus="linkField?.select()"
+    />
+    <div class="mt-5 flex justify-end gap-2">
+      <BaseButton variant="plain" @click="closeFallback">Done</BaseButton>
+      <BaseButton @click="copyFromField">Copy</BaseButton>
+    </div>
+  </BaseDialog>
 </template>

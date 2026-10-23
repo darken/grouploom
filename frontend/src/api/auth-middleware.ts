@@ -28,7 +28,9 @@ function refreshOnce(): Promise<string | null> {
   return inFlightRefresh
 }
 
-const isAuthPath = (schemaPath: string) => schemaPath.startsWith('/auth/')
+// /public/* is authorized by a member token the caller passes itself. Never attach an organizer's bearer
+// token there, and a 401 means a bad link, not an expired session, so it must not trigger a refresh.
+const isAuthPath = (schemaPath: string) => schemaPath.startsWith('/auth/') || schemaPath.startsWith('/public/')
 
 // Request bodies are single-use, so keep a clone of each request to be able to retry it once.
 const pending = new Map<string, Request>()

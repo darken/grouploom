@@ -246,4 +246,45 @@ describe('members store', () => {
     expect(ok).toBe(false)
     expect(store.error?.status).toBe(404)
   })
+
+  it('createPreferencesLink posts for the member and returns the url and expiry', async () => {
+    post.mockResolvedValue({
+      data: { url: 'https://app.example.com/m/preferences#t=abc', expiresAt: '2026-03-01T00:00:00Z' },
+      response: new Response(),
+    })
+    const store = useMembersStore()
+
+    const link = await store.createPreferencesLink('m1')
+
+    expect(post).toHaveBeenCalledWith('/members/{id}/preferences-link', { params: { path: { id: 'm1' } } })
+    expect(link).toEqual({ url: 'https://app.example.com/m/preferences#t=abc', expiresAt: '2026-03-01T00:00:00Z' })
+    expect(store.error).toBeNull()
+  })
+
+  it('createPreferencesLink returns null and reports the error when it fails', async () => {
+    post.mockResolvedValue(problem(404))
+    const store = useMembersStore()
+
+    const link = await store.createPreferencesLink('gone')
+
+    expect(link).toBeNull()
+    expect(store.error?.status).toBe(404)
+  })
+
+  it('createPreferencesLink returns null on a network failure', async () => {
+    post.mockRejectedValue(new TypeError('Failed to fetch'))
+    const store = useMembersStore()
+
+    expect(await store.createPreferencesLink('m1')).toBeNull()
+    expect(store.error?.status).toBe(0)
+  })
+
+  it('keeps the paused flag the server sends', async () => {
+    get.mockResolvedValue(pageOf([member('1', { invitationsPaused: true }), member('2', { invitationsPaused: false })]))
+    const store = useMembersStore()
+
+    await store.fetch({ q: '', page: 0 })
+
+    expect(store.items.map((m) => m.invitationsPaused)).toEqual([true, false])
+  })
 })

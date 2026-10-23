@@ -67,6 +67,52 @@ describe('router guard', () => {
   })
 })
 
+describe('router guard for public routes', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    post.mockReset()
+  })
+
+  it('opens the member preferences page when signed out, without restoring a session', async () => {
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/m/preferences')
+
+    expect(router.currentRoute.value.name).toBe('member-preferences')
+    expect(router.currentRoute.value.meta).toMatchObject({ public: true, layout: 'member', title: 'Email preferences' })
+    expect(post).not.toHaveBeenCalled()
+    expect(useAuthStore().status).toBe('unknown')
+  })
+
+  it('does not use the session of a signed-in organizer on a public route', async () => {
+    post.mockResolvedValue({ data: me, response: new Response() })
+    await useAuthStore().restore()
+    post.mockClear()
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/m/preferences')
+
+    expect(router.currentRoute.value.path).toBe('/m/preferences')
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  it('keeps the fragment of the member link when navigating to the page', async () => {
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/m/preferences#t=abc')
+
+    expect(router.currentRoute.value.hash).toBe('#t=abc')
+  })
+
+  it('sets the document title', async () => {
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/m/preferences')
+
+    expect(document.title).toBe('Email preferences · GroupLoom')
+  })
+})
+
 describe('safeRedirect', () => {
   it.each([
     ['https://evil.example', '/'],

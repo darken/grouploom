@@ -10,6 +10,7 @@ import type { PageInfo } from '@/stores/eventTypes'
 export type Member = components['schemas']['MemberResponse']
 export type CreateMemberInput = components['schemas']['CreateMemberRequest']
 export type UpdateMemberInput = components['schemas']['UpdateMemberRequest']
+export type PreferencesLink = components['schemas']['PreferencesLinkResponse']
 
 /** What the member form emits: the edit fields additionally carry the version. */
 export type MemberDraft = CreateMemberInput & Partial<Pick<UpdateMemberInput, 'version'>>
@@ -118,12 +119,23 @@ export const useMembersStore = defineStore('members', () => {
     return true
   }
 
+  /** Issues a new personal link for the member (earlier ones keep working); null when it couldn't be created. */
+  async function createPreferencesLink(id: string): Promise<PreferencesLink | null> {
+    error.value = null
+    try {
+      return unwrap(await api.POST('/members/{id}/preferences-link', { params: { path: { id } } }))
+    } catch (e) {
+      error.value = toApiError(e)
+      return null
+    }
+  }
+
   function clearSaveError() {
     saveError.value = null
   }
 
   return {
     items, pageInfo, page, query, loading, loaded, saving, error, saveError, stale, fieldErrors,
-    fetch, create, update, remove, clearSaveError,
+    fetch, create, update, remove, createPreferencesLink, clearSaveError,
   }
 })

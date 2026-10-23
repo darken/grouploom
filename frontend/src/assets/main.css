@@ -26,6 +26,8 @@
     --app-accent: #0071e3;
     --app-accent-hover: #0077ed;
     --app-danger: #c4001a;
+    /* >= 3:1 against the surface, so the off state is visible without relying on the thumb alone. */
+    --app-switch-off: #8e8e93;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -39,6 +41,7 @@
       --app-accent: #2997ff;
       --app-accent-hover: #4aa9ff;
       --app-danger: #ff6b6b;
+      --app-switch-off: #6c6c70;
     }
   }
 

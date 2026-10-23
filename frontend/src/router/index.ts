@@ -7,7 +7,9 @@ declare module 'vue-router' {
     title?: string
     requiresAuth?: boolean
     guestOnly?: boolean
-    layout?: 'auth'
+    /** Reachable by anyone; the guard skips session restore and every auth redirect. */
+    public?: boolean
+    layout?: 'auth' | 'member'
   }
 }
 
@@ -71,6 +73,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
         meta: { title: 'Create your group', guestOnly: true, layout: 'auth' },
       },
       {
+        path: '/m/preferences',
+        name: 'member-preferences',
+        component: () => import('@/views/MemberPreferencesView.vue'),
+        meta: { title: 'Email preferences', public: true, layout: 'member' },
+      },
+      {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/views/NotFoundView.vue'),
@@ -80,6 +88,8 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
   })
 
   router.beforeEach(async (to) => {
+    // Members open their links in whatever browser they have, possibly one an organizer is signed in to.
+    if (to.meta.public) return true
     const auth = useAuthStore()
     await auth.restore()
     if (to.meta.requiresAuth && !auth.isAuthenticated) return loginLocation(to.fullPath)

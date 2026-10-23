@@ -11,6 +11,7 @@ const existing: Member = {
   version: 3,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
+  invitationsPaused: false,
 }
 
 const save = (w: ReturnType<typeof mount>) => w.find('button[type=submit]')

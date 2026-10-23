@@ -39,6 +39,23 @@ describe('authMiddleware', () => {
     expect(request?.headers.get('Authorization') ?? null).toBeNull()
   })
 
+  it('does not attach the token to /public/ requests, even when signed in', async () => {
+    const request = (await authMiddleware.onRequest!(params('a', '/public/preferences'))) as Request | undefined
+
+    expect(request?.headers.get('Authorization') ?? null).toBeNull()
+  })
+
+  it('does not refresh, retry or end the session when a /public/ request returns 401', async () => {
+    const p = params('1', '/public/preferences')
+    await authMiddleware.onRequest!(p)
+    const result = await authMiddleware.onResponse!({ ...p, response: new Response(null, { status: 401 }) })
+
+    expect(result).toBeUndefined()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(onSessionExpired).not.toHaveBeenCalled()
+  })
+
   it('refreshes once and retries the request with the new token on 401', async () => {
     refresh.mockResolvedValue('new')
     fetchMock.mockResolvedValue(new Response('ok', { status: 200 }))

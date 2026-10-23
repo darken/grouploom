@@ -1,8 +1,18 @@
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+
+import { api } from '@/api/client'
+import { useToast } from '@/composables/useToast'
+import { installDialogPolyfill } from './dialogPolyfill'
 
 import type { Member } from '@/stores/members'
 import MemberList from '../MemberList.vue'
+
+vi.mock('@/api/client', () => ({ api: { POST: vi.fn<() => Promise<unknown>>() } }))
+const post = vi.mocked(api.POST) as unknown as ReturnType<typeof vi.fn>
+
+beforeAll(installDialogPolyfill)
 
 function member(overrides: Partial<Member> = {}): Member {
   return {
@@ -12,6 +22,7 @@ function member(overrides: Partial<Member> = {}): Member {
     version: 0,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    invitationsPaused: false,
     ...overrides,
   }
 }
@@ -74,15 +85,15 @@ describe('MemberList', () => {
     expect(wrapper.emitted('edit')).toEqual([[first]])
   })
 
-  it('opens an actions menu with Edit and Remove', async () => {
+  it('opens an actions menu with Edit, Copy preferences link and Remove', async () => {
     const first = member()
     const wrapper = mount(MemberList, { props: { items: [first] } })
     expect(wrapper.find('[role=menu]').exists()).toBe(false)
 
     await wrapper.find('button[aria-label="Actions for Ana Pérez"]').trigger('click')
-    expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Edit', 'Remove'])
+    expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Edit', 'Copy preferences link', 'Remove'])
 
-    await wrapper.findAll('[role=menuitem]')[1]!.trigger('click')
+    await wrapper.findAll('[role=menuitem]')[2]!.trigger('click')
     expect(wrapper.emitted('remove')?.[0]).toEqual([first])
     expect(wrapper.find('[role=menu]').exists()).toBe(false)
   })
@@ -105,5 +116,127 @@ describe('MemberList', () => {
 
     expect(wrapper.find('[role=menu]').exists()).toBe(false)
     wrapper.unmount()
+  })
+
+  describe('paused pill', () => {
+    it('marks members who paused all invitations', () => {
+      const wrapper = mount(MemberList, { props: { items: [member({ invitationsPaused: true })] } })
+
+      const pill = wrapper.get('[data-paused]')
+      expect(pill.text()).toBe('Paused')
+      expect(pill.classes()).toContain('rounded-full')
+    })
+
+    it('shows nothing for members who have not paused', () => {
+      const wrapper = mount(MemberList, { props: { items: [member()] } })
+
+      expect(wrapper.find('[data-paused]').exists()).toBe(false)
+    })
+  })
+
+  describe('copy preferences link', () => {
+    const URL = 'https://app.example.com/m/preferences#t=abc'
+    const writeText = vi.fn<(text: string) => Promise<void>>()
+
+    function link(days = 60) {
+      return {
+        data: { url: URL, expiresAt: new Date(Date.now() + days * 86_400_000).toISOString() },
+        response: new Response(),
+      }
+    }
+
+    async function chooseCopy(wrapper: ReturnType<typeof mount>) {
+      await wrapper.get('button[aria-label="Actions for Ana Pérez"]').trigger('click')
+      await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Copy preferences link')!.trigger('click')
+      await flushPromises()
+    }
+
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      post.mockReset()
+      post.mockResolvedValue(link())
+      writeText.mockReset()
+      writeText.mockResolvedValue()
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+      useToast().dismiss()
+      document.body.innerHTML = ''
+    })
+
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'clipboard')
+    })
+
+    it('creates a link for that member, copies it and confirms with a toast', async () => {
+      const wrapper = mount(MemberList, { props: { items: [member({ id: 'm1' })] }, attachTo: document.body })
+
+      await chooseCopy(wrapper)
+
+      expect(post).toHaveBeenCalledWith('/members/{id}/preferences-link', { params: { path: { id: 'm1' } } })
+      expect(writeText).toHaveBeenCalledWith(URL)
+      expect(useToast().toast.value?.message).toBe('Link copied. It works for 60 days.')
+      expect(wrapper.find('[role=menu]').exists()).toBe(false)
+      expect(document.querySelector('dialog[open]')).toBeNull()
+      wrapper.unmount()
+    })
+
+    it('shows the link in a read-only, pre-selected field when the clipboard is unavailable', async () => {
+      Reflect.deleteProperty(navigator, 'clipboard')
+      const wrapper = mount(MemberList, { props: { items: [member()] }, attachTo: document.body })
+
+      await chooseCopy(wrapper)
+      await flushPromises()
+
+      const dialog = wrapper.get('dialog[open]')
+      const field = dialog.get('input[readonly]').element as HTMLInputElement
+      expect(field.value).toBe(URL)
+      expect(document.activeElement).toBe(field)
+      expect([field.selectionStart, field.selectionEnd]).toEqual([0, URL.length])
+      expect(dialog.findAll('button').map((b) => b.text())).toContain('Copy')
+      expect(useToast().toast.value).toBeNull()
+      wrapper.unmount()
+    })
+
+    it('falls back to the dialog when the browser refuses to write to the clipboard', async () => {
+      writeText.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
+      const wrapper = mount(MemberList, { props: { items: [member()] }, attachTo: document.body })
+
+      await chooseCopy(wrapper)
+
+      expect(wrapper.get('dialog[open] input[readonly]').element).toHaveProperty('value', URL)
+      expect(useToast().toast.value).toBeNull()
+      wrapper.unmount()
+    })
+
+    it('closes the fallback dialog with Done', async () => {
+      Reflect.deleteProperty(navigator, 'clipboard')
+      const wrapper = mount(MemberList, { props: { items: [member()] }, attachTo: document.body })
+      await chooseCopy(wrapper)
+
+      await wrapper.findAll('dialog[open] button').find((b) => b.text() === 'Done')!.trigger('click')
+
+      expect(wrapper.find('dialog[open]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('tells the organizer when no link could be created', async () => {
+      post.mockResolvedValue({ error: { status: 404, title: 'Not found' }, response: new Response(null, { status: 404 }) })
+      const wrapper = mount(MemberList, { props: { items: [member()] }, attachTo: document.body })
+
+      await chooseCopy(wrapper)
+
+      expect(writeText).not.toHaveBeenCalled()
+      expect(useToast().toast.value?.message).toBe("Couldn't create the link. Try again.")
+      wrapper.unmount()
+    })
+
+    it('words the toast with the real lifetime of the link', async () => {
+      post.mockResolvedValue(link(14))
+      const wrapper = mount(MemberList, { props: { items: [member()] }, attachTo: document.body })
+
+      await chooseCopy(wrapper)
+
+      expect(useToast().toast.value?.message).toBe('Link copied. It works for 14 days.')
+      wrapper.unmount()
+    })
   })
 })

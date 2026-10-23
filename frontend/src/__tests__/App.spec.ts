@@ -74,6 +74,25 @@ describe('App', () => {
     expect(wrapper.find('header').exists()).toBe(false)
   })
 
+  it('shows the member preferences page without the app shell or any session lookup', async () => {
+    get.mockImplementation(async (path: string) =>
+      path === '/public/preferences'
+        ? {
+            data: { memberName: 'Ana', maskedEmail: 'a••@example.com', groupName: 'Chess Club', invitationsPaused: false, eventTypes: [] },
+            response: new Response(),
+          }
+        : info,
+    )
+
+    const { wrapper } = await mountApp('/m/preferences#t=abc')
+
+    expect(wrapper.find('h1').text()).toBe('Email preferences')
+    expect(wrapper.find('header').exists()).toBe(false)
+    expect(wrapper.find('footer').text()).toBe('Sent by Chess Club via GroupLoom')
+    expect(post).not.toHaveBeenCalled()
+    expect(get).not.toHaveBeenCalledWith('/system/info')
+  })
+
   it('hides the footer version quietly when the backend is down', async () => {
     post.mockResolvedValue(signedIn)
     serve({ error: { status: 502, title: 'Bad Gateway' }, response: new Response(null, { status: 502 }) })
