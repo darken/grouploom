@@ -287,6 +287,16 @@ class EventTypeControllerTest {
 	}
 
 	@Test
+	void delete_withTypeUsedByEvents_returns409WithInUseCode() throws Exception {
+		org.mockito.Mockito.doThrow(new ConflictException("in use", "event-type.in-use", null)).when(service).delete(any(), eq(ID));
+
+		mockMvc.perform(api(delete("/api/event-types/" + ID)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("event-type.in-use"))
+			.andExpect(jsonPath("$.field").doesNotExist());
+	}
+
+	@Test
 	void delete_withoutToken_returns401() throws Exception {
 		mockMvc.perform(delete("/api/event-types/" + ID).servletPath("/api")).andExpect(status().isUnauthorized());
 	}

@@ -97,6 +97,8 @@ public class EventTypeController {
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	@ApiResponse(responseCode = "409", description = "Used by events (code event-type.in-use); archive it instead",
+			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
 	public void delete(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID id) {
 		service.delete(current, id);
 	}

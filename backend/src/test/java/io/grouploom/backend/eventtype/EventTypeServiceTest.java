@@ -31,6 +31,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
+import io.grouploom.backend.event.EventRepository;
 import io.grouploom.backend.eventtype.dto.CreateEventTypeRequest;
 import io.grouploom.backend.eventtype.dto.UpdateEventTypeRequest;
 import io.grouploom.backend.group.Group;
@@ -46,6 +47,7 @@ class EventTypeServiceTest {
 
 	@Mock EventTypeRepository repository;
 	@Mock GroupRepository groups;
+	@Mock EventRepository events;
 
 	private final UUID groupId = UUID.randomUUID();
 	private final CurrentUser current = new CurrentUser(UUID.randomUUID(), groupId, Role.ORGANIZER);
@@ -58,7 +60,7 @@ class EventTypeServiceTest {
 		ReflectionTestUtils.setField(group, "id", groupId);
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		given(repository.saveAndFlush(any(EventType.class))).willAnswer(i -> i.getArgument(0));
-		service = new EventTypeService(repository, groups, Clock.fixed(LATER, ZoneOffset.UTC));
+		service = new EventTypeService(repository, groups, events, Clock.fixed(LATER, ZoneOffset.UTC));
 	}
 
 	private EventType existing(String name) {
@@ -208,6 +210,29 @@ class EventTypeServiceTest {
 		service.delete(current, e.getId());
 
 		verify(repository).delete(e);
+	}
+
+	@Test
+	void delete_withTypeUsedByEvents_throwsInUse() {
+		EventType e = existing("Practice");
+		given(events.existsByEventTypeId(e.getId())).willReturn(true);
+
+		assertThatThrownBy(() -> service.delete(current, e.getId()))
+			.isInstanceOfSatisfying(ConflictException.class, ex -> {
+				assertThat(ex.getCode()).isEqualTo("event-type.in-use");
+				assertThat(ex.getField()).isNull();
+				assertThat(ex.getMessage()).isEqualTo("This event type is used by events. Archive it instead.");
+			});
+		verify(repository, never()).delete(any());
+	}
+
+	@Test
+	void delete_whenAnEventAppearsBeforeTheFlush_translatesTheForeignKeyViolationToInUse() {
+		EventType e = existing("Practice");
+		org.mockito.Mockito.doThrow(new DataIntegrityViolationException("fk")).when(repository).flush();
+
+		assertThatThrownBy(() -> service.delete(current, e.getId()))
+			.isInstanceOfSatisfying(ConflictException.class, ex -> assertThat(ex.getCode()).isEqualTo("event-type.in-use"));
 	}
 
 	@Test

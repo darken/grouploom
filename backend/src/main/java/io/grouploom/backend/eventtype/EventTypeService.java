@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
+import io.grouploom.backend.event.EventRepository;
 import io.grouploom.backend.eventtype.dto.CreateEventTypeRequest;
 import io.grouploom.backend.eventtype.dto.EventTypeResponse;
 import io.grouploom.backend.eventtype.dto.UpdateEventTypeRequest;
@@ -23,11 +24,14 @@ public class EventTypeService {
 
 	private final EventTypeRepository eventTypes;
 	private final GroupRepository groups;
+	private final EventRepository events;
 	private final Clock clock;
 
-	public EventTypeService(EventTypeRepository eventTypes, GroupRepository groups, Clock clock) {
+	public EventTypeService(EventTypeRepository eventTypes, GroupRepository groups, EventRepository events,
+			Clock clock) {
 		this.eventTypes = eventTypes;
 		this.groups = groups;
+		this.events = events;
 		this.clock = clock;
 	}
 
@@ -78,8 +82,18 @@ public class EventTypeService {
 
 	@Transactional
 	public void delete(CurrentUser current, UUID id) {
-		// Slice 4 adds a check here: types referenced by events can't be deleted (archive instead).
-		eventTypes.delete(find(current, id));
+		EventType eventType = find(current, id);
+		if (events.existsByEventTypeId(id)) {
+			throw inUse();
+		}
+		eventTypes.delete(eventType);
+		try {
+			eventTypes.flush();
+		}
+		catch (DataIntegrityViolationException e) {
+			// An event was created between the check and the delete; the foreign key decided.
+			throw inUse();
+		}
 	}
 
 	private EventType find(CurrentUser current, UUID id) {
@@ -103,6 +117,10 @@ public class EventTypeService {
 
 	private static ConflictException nameTaken() {
 		return new ConflictException("An event type with this name already exists.", "event-type.name-taken", "name");
+	}
+
+	private static ConflictException inUse() {
+		return new ConflictException("This event type is used by events. Archive it instead.", "event-type.in-use", null);
 	}
 
 	private static ConflictException stale() {
