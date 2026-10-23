@@ -21,7 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import io.grouploom.backend.config.AppProperties;
+import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.member.Member;
@@ -41,7 +41,7 @@ class MemberTokenServiceTest {
 	@BeforeEach
 	void setUp() {
 		service = new MemberTokenService(repository,
-				new AppProperties("http://localhost:5173", new AppProperties.MemberLinks(TTL)),
+				TestProperties.app("http://localhost:5173", TTL),
 				Clock.fixed(NOW, ZoneOffset.UTC));
 		member = new Member(new Group("Club", NOW), "Ana", "ana@example.com", NOW);
 		ReflectionTestUtils.setField(member, "id", UUID.randomUUID());

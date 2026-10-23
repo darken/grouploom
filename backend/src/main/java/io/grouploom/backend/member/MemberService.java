@@ -11,7 +11,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.config.AppProperties;
@@ -24,6 +23,7 @@ import io.grouploom.backend.member.dto.PreferencesLinkResponse;
 import io.grouploom.backend.member.dto.UpdateMemberRequest;
 import io.grouploom.backend.membertoken.MemberTokenPurpose;
 import io.grouploom.backend.membertoken.MemberTokenService;
+import io.grouploom.backend.membertoken.PreferencesLinks;
 import io.grouploom.backend.preference.PreferenceService;
 
 @Service
@@ -96,12 +96,7 @@ public class MemberService {
 	public PreferencesLinkResponse createPreferencesLink(CurrentUser current, UUID id) {
 		Member member = find(current, id);
 		var issued = memberTokens.issue(member, MemberTokenPurpose.PREFERENCES);
-		// The token goes in the fragment so it never reaches server logs or Referer headers.
-		String url = UriComponentsBuilder.fromUriString(properties.publicBaseUrl())
-			.path("/m/preferences")
-			.fragment("t=" + issued.raw())
-			.build()
-			.toUriString();
+		String url = PreferencesLinks.url(properties.publicBaseUrl(), issued.raw());
 		return new PreferencesLinkResponse(url, issued.expiresAt());
 	}
 

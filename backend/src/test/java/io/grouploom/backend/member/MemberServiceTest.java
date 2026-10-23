@@ -32,7 +32,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import io.grouploom.backend.auth.CurrentUser;
-import io.grouploom.backend.config.AppProperties;
+import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.group.Group;
@@ -68,7 +68,7 @@ class MemberServiceTest {
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		given(repository.saveAndFlush(any(Member.class))).willAnswer(i -> i.getArgument(0));
 		service = new MemberService(repository, groups, memberTokens, preferences,
-				new AppProperties("https://app.example.com", new AppProperties.MemberLinks(Duration.ofDays(60))),
+				TestProperties.app("https://app.example.com", Duration.ofDays(60)),
 				Clock.fixed(LATER, ZoneOffset.UTC));
 	}
 
@@ -247,7 +247,7 @@ class MemberServiceTest {
 	@Test
 	void createPreferencesLink_withTrailingSlashInBaseUrl_doesNotDoubleTheSlash() {
 		service = new MemberService(repository, groups, memberTokens, preferences,
-				new AppProperties("https://app.example.com/", new AppProperties.MemberLinks(Duration.ofDays(60))),
+				TestProperties.app("https://app.example.com/", Duration.ofDays(60)),
 				Clock.fixed(LATER, ZoneOffset.UTC));
 		Member m = existing("Ana", "ana@example.com");
 		given(memberTokens.issue(m, MemberTokenPurpose.PREFERENCES))

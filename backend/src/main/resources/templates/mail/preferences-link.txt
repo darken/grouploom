@@ -1,0 +1,12 @@
+[[${groupName}]]
+
+Hi [[${memberName}]],
+
+[[${groupName}]] would like to know which of its events you want to hear about. Use the link below to choose, or to pause invitations altogether.
+
+Set your preferences:
+[[${link}]]
+
+This link works for [[${ttlText}]].
+
+If you weren't expecting this, you can ignore it.
