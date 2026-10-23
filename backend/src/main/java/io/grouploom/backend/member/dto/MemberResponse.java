@@ -15,6 +15,6 @@ public record MemberResponse(
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED, accessMode = Schema.AccessMode.READ_ONLY,
 				description = "The member paused all invitations. Only the member can change this.") boolean invitationsPaused,
-		@Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true,
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED,
 				description = "Latest preferences-link email to this member; null if none was ever requested.") EmailDeliveryStatus preferencesEmail) {
 }

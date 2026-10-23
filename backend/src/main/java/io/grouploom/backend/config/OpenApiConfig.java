@@ -38,6 +38,15 @@ public class OpenApiConfig {
 					schema.setRequired(java.util.List.of("content", "page"));
 				}
 			});
+			// springdoc renders `nullable` objects as {"type":"null","$ref":…}, which is not a union.
+			Schema<?> member = openApi.getComponents().getSchemas().get("MemberResponse");
+			if (member != null && member.getProperties() != null && member.getProperties().containsKey("preferencesEmail")) {
+				Schema<Object> preferencesEmail = member.getProperties().get("preferencesEmail");
+				member.getProperties().put("preferencesEmail", new Schema<>()
+					.description(preferencesEmail.getDescription())
+					.oneOf(java.util.List.of(new Schema<>().$ref("#/components/schemas/EmailDeliveryStatus"),
+							new Schema<>().types(java.util.Set.of("null")))));
+			}
 			ApiResponse error = new ApiResponse().description("Error").content(new Content()
 				.addMediaType("application/problem+json",
 					new io.swagger.v3.oas.models.media.MediaType().schema(new Schema<>().$ref("#/components/schemas/ProblemDetail"))));

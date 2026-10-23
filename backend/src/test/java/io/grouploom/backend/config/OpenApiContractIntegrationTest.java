@@ -83,8 +83,12 @@ class OpenApiContractIntegrationTest {
 	}
 
 	@Test
-	void memberResponse_requiresANullablePreferencesEmail() throws Exception {
+	void memberResponse_requiresAPreferencesEmailThatIsExplicitlyNullable() throws Exception {
 		docs()
+			.andExpect(jsonPath("$.components.schemas.MemberResponse.properties.preferencesEmail.oneOf[0]['$ref']")
+				.value("#/components/schemas/EmailDeliveryStatus"))
+			.andExpect(jsonPath("$.components.schemas.MemberResponse.properties.preferencesEmail.oneOf[1].type").value("null"))
+			.andExpect(jsonPath("$.components.schemas.MemberResponse.properties.preferencesEmail.type").doesNotExist())
 			.andExpect(jsonPath("$.components.schemas.MemberResponse.required").value(org.hamcrest.Matchers.hasItem("preferencesEmail")))
 			.andExpect(jsonPath("$.components.schemas.EmailDeliveryStatus.required")
 				.value(org.hamcrest.Matchers.containsInAnyOrder("status", "at")))
