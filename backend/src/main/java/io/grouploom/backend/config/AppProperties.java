@@ -17,7 +17,8 @@ public record AppProperties(
 		/** Origin of the frontend, used to build links sent to members (no trailing slash needed). */
 		@NotBlank String publicBaseUrl,
 		@Valid @NotNull @DefaultValue MemberLinks memberLinks,
-		@Valid @NotNull @DefaultValue Mail mail) {
+		@Valid @NotNull @DefaultValue Mail mail,
+		@Valid @NotNull @DefaultValue Notifications notifications) {
 
 	public record MemberLinks(@DefaultValue("60d") Duration ttl) {
 	}
@@ -32,6 +33,14 @@ public record AppProperties(
 			/** How long a dispatcher owns a claimed row before another may take it over. */
 			@DefaultValue("2m") Duration claimTimeout,
 			@DefaultValue("5m") Duration preferencesCooldown) {
+	}
+
+	public record Notifications(
+			@DefaultValue("true") boolean fanOutEnabled,
+			@DefaultValue("30s") Duration fanOutInterval,
+			@DefaultValue("20") @Positive int batchSize,
+			/** How long a fan-out owns a claimed notification before another may take it over. */
+			@DefaultValue("2m") Duration claimTimeout) {
 	}
 
 }

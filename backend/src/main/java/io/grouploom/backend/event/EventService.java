@@ -26,6 +26,9 @@ import io.grouploom.backend.event.dto.UpdateEventRequest;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.notification.EventNotificationRepository;
+import io.grouploom.backend.notification.EventNotificationService;
+import io.grouploom.backend.notification.NotificationStatus;
 
 @Service
 public class EventService {
@@ -37,12 +40,17 @@ public class EventService {
 	private final EventRepository events;
 	private final EventTypeRepository eventTypes;
 	private final GroupRepository groups;
+	private final EventNotificationService notificationService;
+	private final EventNotificationRepository notifications;
 	private final Clock clock;
 
-	public EventService(EventRepository events, EventTypeRepository eventTypes, GroupRepository groups, Clock clock) {
+	public EventService(EventRepository events, EventTypeRepository eventTypes, GroupRepository groups,
+			EventNotificationService notificationService, EventNotificationRepository notifications, Clock clock) {
 		this.events = events;
 		this.eventTypes = eventTypes;
 		this.groups = groups;
+		this.notificationService = notificationService;
+		this.notifications = notifications;
 		this.clock = clock;
 	}
 
@@ -89,8 +97,12 @@ public class EventService {
 		if (!times.start().equals(event.getStartsAt()) && times.start().isBefore(clock.instant().minus(PAST_ALLOWANCE))) {
 			throw new BadRequestException("The start can't be in the past.", "event.start-in-past", "localStart");
 		}
+		boolean startMoved = !times.start().equals(event.getStartsAt());
 		event.update(type, request.title().trim(), request.description(), request.location(), times.start(),
 				times.end(), request.timeZone(), clock.instant());
+		if (startMoved) {
+			notificationService.onEventRescheduled(event, times.start());
+		}
 		return EventMapper.toResponse(flush(event));
 	}
 
@@ -105,7 +117,10 @@ public class EventService {
 		String message = request == null || request.message() == null || request.message().isBlank() ? null
 				: request.message().trim();
 		event.cancel(message, now);
-		return EventMapper.toResponse(flush(event));
+		// Flush first: the row lock taken here makes a concurrent fan-out finish before we look at what was sent.
+		EventResponse response = EventMapper.toResponse(flush(event));
+		notificationService.onEventCancelled(event, current);
+		return response;
 	}
 
 	private static void requireNotCancelled(Event event) {
@@ -116,8 +131,12 @@ public class EventService {
 
 	@Transactional
 	public void delete(CurrentUser current, UUID id) {
-		// Slice 7 adds cancellation for events that already have notifications.
-		events.delete(find(current, id));
+		Event event = find(current, id);
+		if (notifications.existsByEventIdAndStatus(event.getId(), NotificationStatus.SENT)) {
+			throw new ConflictException("Members were notified about this event. Cancel it instead.",
+					"event.has-notifications", null);
+		}
+		events.delete(event);
 	}
 
 	private record Times(Instant start, Instant end) {

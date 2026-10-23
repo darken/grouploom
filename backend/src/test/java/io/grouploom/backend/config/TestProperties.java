@@ -11,7 +11,8 @@ public final class TestProperties {
 	public static AppProperties app(String publicBaseUrl, Duration linkTtl) {
 		return new AppProperties(publicBaseUrl, new AppProperties.MemberLinks(linkTtl),
 				new AppProperties.Mail("no-reply@grouploom.test", true, Duration.ofSeconds(5), 20, 5,
-						Duration.ofMinutes(2), Duration.ofMinutes(5)));
+						Duration.ofMinutes(2), Duration.ofMinutes(5)),
+				new AppProperties.Notifications(true, Duration.ofSeconds(30), 20, Duration.ofMinutes(2)));
 	}
 
 }

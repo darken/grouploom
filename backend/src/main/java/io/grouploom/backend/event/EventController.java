@@ -44,7 +44,8 @@ import jakarta.validation.Valid;
 public class EventController {
 
 	private static final String BAD_REQUEST_CODES = "Invalid input. Codes: event.start-in-past, event.too-long, "
-			+ "event.end-before-start, event.event-type-archived, event.event-type-not-found";
+			+ "event.end-before-start, event.event-type-archived, event.event-type-not-found, "
+			+ "event.notification-after-start (a scheduled absolute notification would fall after the new start)";
 
 	private final EventService service;
 
@@ -115,6 +116,8 @@ public class EventController {
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
+	@ApiResponse(responseCode = "409", description = "Members were already notified (event.has-notifications); cancel the event instead",
+			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
 	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
 	public void delete(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID id) {
 		service.delete(current, id);

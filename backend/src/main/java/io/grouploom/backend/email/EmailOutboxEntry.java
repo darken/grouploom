@@ -6,8 +6,10 @@ import java.util.UUID;
 
 import org.hibernate.annotations.UuidGenerator;
 
+import io.grouploom.backend.event.Event;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.member.Member;
+import io.grouploom.backend.notification.EventNotification;
 import io.grouploom.backend.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,6 +48,14 @@ public class EmailOutboxEntry {
 	@JoinColumn(name = "requested_by_user_id", updatable = false)
 	private User requestedBy;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "event_id", updatable = false)
+	private Event event;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "notification_id", updatable = false)
+	private EventNotification notification;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 40, updatable = false)
 	private EmailKind kind;
@@ -83,6 +93,13 @@ public class EmailOutboxEntry {
 		this.status = EmailStatus.PENDING;
 		this.nextAttemptAt = now;
 		this.createdAt = now;
+	}
+
+	public EmailOutboxEntry(Group group, Member member, User requestedBy, EmailKind kind, Event event,
+			EventNotification notification, Instant now) {
+		this(group, member, requestedBy, kind, now);
+		this.event = event;
+		this.notification = notification;
 	}
 
 	public void claim(Instant now, Duration timeout) {
@@ -139,6 +156,14 @@ public class EmailOutboxEntry {
 
 	public User getRequestedBy() {
 		return requestedBy;
+	}
+
+	public Event getEvent() {
+		return event;
+	}
+
+	public EventNotification getNotification() {
+		return notification;
 	}
 
 	public EmailKind getKind() {

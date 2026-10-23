@@ -41,6 +41,9 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.notification.EventNotificationRepository;
+import io.grouploom.backend.notification.EventNotificationService;
+import io.grouploom.backend.notification.NotificationStatus;
 import io.grouploom.backend.user.Role;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +56,8 @@ class EventServiceTest {
 	@Mock EventRepository repository;
 	@Mock EventTypeRepository eventTypes;
 	@Mock GroupRepository groups;
+	@Mock EventNotificationService notificationService;
+	@Mock EventNotificationRepository notificationRepository;
 
 	private final UUID groupId = UUID.randomUUID();
 	private final CurrentUser current = new CurrentUser(UUID.randomUUID(), groupId, Role.ORGANIZER);
@@ -67,7 +72,8 @@ class EventServiceTest {
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		practice = eventType("Practice");
 		given(repository.saveAndFlush(any(Event.class))).willAnswer(i -> i.getArgument(0));
-		service = new EventService(repository, eventTypes, groups, Clock.fixed(NOW, ZoneOffset.UTC));
+		service = new EventService(repository, eventTypes, groups, notificationService, notificationRepository,
+				Clock.fixed(NOW, ZoneOffset.UTC));
 	}
 
 	private EventType eventType(String name) {
@@ -425,6 +431,54 @@ class EventServiceTest {
 	private void assertConflict(Runnable action, String code) {
 		assertThatThrownBy(action::run).isInstanceOfSatisfying(ConflictException.class,
 				e -> assertThat(e.getCode()).isEqualTo(code));
+	}
+
+	@Test
+	void cancel_tellsTheNotificationServiceAfterFlushing() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+
+		service.cancel(current, e.getId(), new CancelEventRequest("Closed"));
+
+		var order = org.mockito.Mockito.inOrder(repository, notificationService);
+		order.verify(repository).saveAndFlush(e);
+		order.verify(notificationService).onEventCancelled(e, current);
+	}
+
+	@Test
+	void cancel_whenRejected_doesNotTouchNotifications() {
+		Event e = existing(practice, "2026-05-30T10:00:00Z", "2026-05-30T11:00:00Z");
+
+		assertThatThrownBy(() -> service.cancel(current, e.getId(), new CancelEventRequest(null)))
+			.isInstanceOf(ConflictException.class);
+
+		verify(notificationService, never()).onEventCancelled(any(), any());
+	}
+
+	@Test
+	void update_whenTheStartMoves_tellsTheNotificationService() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+
+		service.update(current, e.getId(), update(e, practice.getId(), "Old", "2026-06-03T10:00:00", "2026-06-03T11:00:00", 0));
+
+		verify(notificationService).onEventRescheduled(e, Instant.parse("2026-06-03T10:00:00Z"));
+	}
+
+	@Test
+	void update_whenTheStartIsUnchanged_doesNotTouchNotifications() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+
+		service.update(current, e.getId(), update(e, practice.getId(), "Renamed", "2026-06-02T10:00:00", "2026-06-02T12:00:00", 0));
+
+		verify(notificationService, never()).onEventRescheduled(any(), any());
+	}
+
+	@Test
+	void delete_afterNotificationsWereSent_throwsHasNotifications() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+		given(notificationRepository.existsByEventIdAndStatus(e.getId(), NotificationStatus.SENT)).willReturn(true);
+
+		assertConflict(() -> service.delete(current, e.getId()), "event.has-notifications");
+		verify(repository, never()).delete(any());
 	}
 
 	// --- list ---
