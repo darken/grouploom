@@ -33,6 +33,7 @@ import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
+import io.grouploom.backend.event.dto.CancelEventRequest;
 import io.grouploom.backend.event.dto.CreateEventRequest;
 import io.grouploom.backend.event.dto.UpdateEventRequest;
 import io.grouploom.backend.eventtype.EventType;
@@ -355,6 +356,75 @@ class EventServiceTest {
 		service.delete(current, e.getId());
 
 		verify(repository).delete(e);
+	}
+
+	// --- cancel ---
+
+	@Test
+	void cancel_withUpcomingEvent_marksItCancelledWithTheMessage() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+
+		var response = service.cancel(current, e.getId(), new CancelEventRequest("Gym is closed"));
+
+		assertThat(e.isCancelled()).isTrue();
+		assertThat(response.cancelledAt()).isEqualTo(NOW);
+		assertThat(response.cancellationMessage()).isEqualTo("Gym is closed");
+	}
+
+	@Test
+	void cancel_withoutMessage_cancelsWithNoMessage() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+
+		var response = service.cancel(current, e.getId(), new CancelEventRequest(null));
+
+		assertThat(response.cancelledAt()).isEqualTo(NOW);
+		assertThat(response.cancellationMessage()).isNull();
+	}
+
+	@Test
+	void cancel_withBlankMessage_storesNoMessage() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+
+		assertThat(service.cancel(current, e.getId(), new CancelEventRequest("   ")).cancellationMessage()).isNull();
+	}
+
+	@Test
+	void cancel_whenAlreadyCancelled_throwsConflict() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+		e.cancel(null, CREATED);
+
+		assertConflict(() -> service.cancel(current, e.getId(), new CancelEventRequest(null)), "event.cancelled");
+	}
+
+	@Test
+	void cancel_whenTheEventHasEnded_throwsConflict() {
+		Event e = existing(practice, "2026-05-30T10:00:00Z", "2026-05-30T11:00:00Z");
+
+		assertConflict(() -> service.cancel(current, e.getId(), new CancelEventRequest(null)), "event.ended");
+		assertThat(e.isCancelled()).isFalse();
+	}
+
+	@Test
+	void cancel_withEventFromAnotherGroup_throwsNotFound() {
+		UUID foreignId = UUID.randomUUID();
+		given(repository.findByIdAndGroupId(foreignId, groupId)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.cancel(current, foreignId, new CancelEventRequest(null)))
+			.isInstanceOf(NotFoundException.class);
+	}
+
+	@Test
+	void update_ofACancelledEvent_throwsConflict() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+		e.cancel(null, CREATED);
+
+		assertConflict(() -> service.update(current, e.getId(),
+				update(e, practice.getId(), "New", "2026-06-02T10:00:00", "2026-06-02T11:00:00", 0)), "event.cancelled");
+	}
+
+	private void assertConflict(Runnable action, String code) {
+		assertThatThrownBy(action::run).isInstanceOfSatisfying(ConflictException.class,
+				e -> assertThat(e.getCode()).isEqualTo(code));
 	}
 
 	// --- list ---

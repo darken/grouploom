@@ -25,5 +25,7 @@ public record EventResponse(
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) EventTypeSummary eventType,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) long version,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
-		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt) {
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
+		@Schema(description = "Set once the event is cancelled.") Instant cancelledAt,
+		String cancellationMessage) {
 }

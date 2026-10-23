@@ -71,7 +71,7 @@ class EventControllerTest {
 		return new EventResponse(ID, "Practice", "Weekly", "Gym", Instant.parse("2026-11-02T09:00:00Z"),
 				Instant.parse("2026-11-02T11:00:00Z"), LocalDateTime.parse("2026-11-02T10:00:00"),
 				LocalDateTime.parse("2026-11-02T12:00:00"), "Europe/Madrid",
-				new EventTypeSummary(TYPE_ID, "Training", EventTypeColor.GREEN, false), 0, NOW, NOW);
+				new EventTypeSummary(TYPE_ID, "Training", EventTypeColor.GREEN, false), 0, NOW, NOW, null, null);
 	}
 
 	private static String body(String overrides) {
@@ -198,7 +198,7 @@ class EventControllerTest {
 	void get_withoutOptionalFields_omitsThemInsteadOfSendingNull() throws Exception {
 		EventResponse r = response();
 		given(service.get(any(), eq(ID))).willReturn(new EventResponse(r.id(), r.title(), null, null, r.start(), r.end(),
-				r.localStart(), r.localEnd(), r.timeZone(), r.eventType(), 0, NOW, NOW));
+				r.localStart(), r.localEnd(), r.timeZone(), r.eventType(), 0, NOW, NOW, null, null));
 
 		mockMvc.perform(api(get("/api/events/" + ID)))
 			.andExpect(jsonPath("$", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasKey("description"))))
@@ -363,6 +363,59 @@ class EventControllerTest {
 	@Test
 	void delete_withoutToken_returns401() throws Exception {
 		mockMvc.perform(delete("/api/events/" + ID).servletPath("/api")).andExpect(status().isUnauthorized());
+	}
+
+	// --- cancel ---
+
+	@Test
+	void cancel_withMessage_returns200WithTheEvent() throws Exception {
+		given(service.cancel(any(), eq(ID), any())).willReturn(response());
+
+		mockMvc.perform(api(post("/api/events/" + ID + "/cancel")).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"message\":\"Gym is closed\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(ID.toString()));
+
+		ArgumentCaptor<io.grouploom.backend.event.dto.CancelEventRequest> captor = ArgumentCaptor
+			.forClass(io.grouploom.backend.event.dto.CancelEventRequest.class);
+		verify(service).cancel(any(), eq(ID), captor.capture());
+		assertThat(captor.getValue().message()).isEqualTo("Gym is closed");
+	}
+
+	@Test
+	void cancel_withoutBody_isAllowed() throws Exception {
+		given(service.cancel(any(), eq(ID), any())).willReturn(response());
+
+		mockMvc.perform(api(post("/api/events/" + ID + "/cancel"))).andExpect(status().isOk());
+	}
+
+	@Test
+	void cancel_withOversizedMessage_returns400OnMessage() throws Exception {
+		mockMvc.perform(api(post("/api/events/" + ID + "/cancel")).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"message\":\"" + "x".repeat(1001) + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[?(@.field=='message')]").exists());
+	}
+
+	@Test
+	void cancel_whenAlreadyCancelled_returns409() throws Exception {
+		given(service.cancel(any(), eq(ID), any())).willThrow(new ConflictException("no", "event.cancelled", null));
+
+		mockMvc.perform(api(post("/api/events/" + ID + "/cancel")))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("event.cancelled"));
+	}
+
+	@Test
+	void cancel_withEventFromAnotherGroup_returns404() throws Exception {
+		given(service.cancel(any(), eq(ID), any())).willThrow(new NotFoundException("Event not found."));
+
+		mockMvc.perform(api(post("/api/events/" + ID + "/cancel"))).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void cancel_withoutToken_returns401() throws Exception {
+		mockMvc.perform(post("/api/events/" + ID + "/cancel").servletPath("/api")).andExpect(status().isUnauthorized());
 	}
 
 }

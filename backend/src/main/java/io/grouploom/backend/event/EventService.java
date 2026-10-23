@@ -19,6 +19,7 @@ import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
+import io.grouploom.backend.event.dto.CancelEventRequest;
 import io.grouploom.backend.event.dto.CreateEventRequest;
 import io.grouploom.backend.event.dto.EventResponse;
 import io.grouploom.backend.event.dto.UpdateEventRequest;
@@ -75,6 +76,7 @@ public class EventService {
 	@Transactional
 	public EventResponse update(CurrentUser current, UUID id, UpdateEventRequest request) {
 		Event event = find(current, id);
+		requireNotCancelled(event);
 		if (request.version() != event.getVersion()) {
 			throw stale();
 		}
@@ -90,6 +92,26 @@ public class EventService {
 		event.update(type, request.title().trim(), request.description(), request.location(), times.start(),
 				times.end(), request.timeZone(), clock.instant());
 		return EventMapper.toResponse(flush(event));
+	}
+
+	@Transactional
+	public EventResponse cancel(CurrentUser current, UUID id, CancelEventRequest request) {
+		Event event = find(current, id);
+		requireNotCancelled(event);
+		Instant now = clock.instant();
+		if (!event.getEndsAt().isAfter(now)) {
+			throw new ConflictException("This event has already ended.", "event.ended", null);
+		}
+		String message = request == null || request.message() == null || request.message().isBlank() ? null
+				: request.message().trim();
+		event.cancel(message, now);
+		return EventMapper.toResponse(flush(event));
+	}
+
+	private static void requireNotCancelled(Event event) {
+		if (event.isCancelled()) {
+			throw new ConflictException("This event is cancelled.", "event.cancelled", null);
+		}
 	}
 
 	@Transactional

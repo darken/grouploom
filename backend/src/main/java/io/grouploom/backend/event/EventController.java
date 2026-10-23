@@ -26,6 +26,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.event.dto.CancelEventRequest;
 import io.grouploom.backend.event.dto.CreateEventRequest;
 import io.grouploom.backend.event.dto.EventResponse;
 import io.grouploom.backend.event.dto.UpdateEventRequest;
@@ -90,11 +91,26 @@ public class EventController {
 	@ApiResponse(responseCode = "400", description = BAD_REQUEST_CODES,
 			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
 	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
-	@ApiResponse(responseCode = "409", description = "Stale version (code event.stale)",
+	@ApiResponse(responseCode = "409", description = "Stale version (event.stale) or cancelled event (event.cancelled)",
 			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
 	public EventResponse update(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID id,
 			@Valid @RequestBody UpdateEventRequest request) {
 		return service.update(current, id, request);
+	}
+
+	@PostMapping("/{id}/cancel")
+	@Operation(summary = "Cancel an event",
+			description = "Keeps the event visible as cancelled. Scheduled notifications are dropped and members who were "
+					+ "already notified get a cancellation email. There is no un-cancel.")
+	@ApiResponse(responseCode = "200", description = "OK", content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventResponse.class)))
+	@ApiResponse(responseCode = "400", description = "Invalid input",
+			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	@ApiResponse(responseCode = "409", description = "Already cancelled (event.cancelled) or already ended (event.ended)",
+			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	public EventResponse cancel(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID id,
+			@Valid @RequestBody(required = false) CancelEventRequest request) {
+		return service.cancel(current, id, request);
 	}
 
 	@DeleteMapping("/{id}")

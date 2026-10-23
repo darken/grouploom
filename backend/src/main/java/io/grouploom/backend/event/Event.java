@@ -51,6 +51,12 @@ public class Event {
 	@Column(name = "time_zone", nullable = false, length = 64)
 	private String timeZone;
 
+	@Column(name = "cancelled_at")
+	private Instant cancelledAt;
+
+	@Column(name = "cancellation_message", length = 1000)
+	private String cancellationMessage;
+
 	@Version
 	private long version;
 
@@ -79,6 +85,9 @@ public class Event {
 
 	public void update(EventType eventType, String title, String description, String location, Instant startsAt,
 			Instant endsAt, String timeZone, Instant now) {
+		if (isCancelled()) {
+			throw new IllegalStateException("A cancelled event can't be edited.");
+		}
 		this.eventType = eventType;
 		this.title = title;
 		this.description = description;
@@ -87,6 +96,24 @@ public class Event {
 		this.endsAt = endsAt;
 		this.timeZone = timeZone;
 		this.updatedAt = now;
+	}
+
+	public void cancel(String message, Instant now) {
+		this.cancelledAt = now;
+		this.cancellationMessage = message;
+		this.updatedAt = now;
+	}
+
+	public boolean isCancelled() {
+		return cancelledAt != null;
+	}
+
+	public Instant getCancelledAt() {
+		return cancelledAt;
+	}
+
+	public String getCancellationMessage() {
+		return cancellationMessage;
 	}
 
 	public UUID getId() {
