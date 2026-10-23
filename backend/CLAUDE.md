@@ -44,14 +44,26 @@ Spring Boot 4.x, Java 25, Gradle, package `io.grouploom.backend`.
   access patterns. Prefer lazy associations.
 
 ## Security
-- `config/SecurityConfig` is a placeholder: the OpenAPI docs and Swagger UI
-  are public (so `pnpm gen:api` works) and everything else uses the default
-  form/basic login.
-- JWT auth for users is planned. It needs a new dependency (e.g. the OAuth2
-  resource server starter), so ask before adding it.
+- `config/SecurityConfig` is a stateless OAuth2 resource server. Users
+  authenticate with an HS256 JWT bearer access token (15 min; claims `gid`
+  and `role`, mapped to `ROLE_*` authorities) issued by `auth/service/TokenService`.
+  The signing key comes from `GROUPLOOM_JWT_SECRET`; if blank, a random
+  per-start key is used (dev/test only).
+- Refresh tokens are opaque, stored hashed (`security/OpaqueTokens`), and
+  sent as the `gl_refresh` cookie (HttpOnly, SameSite=Strict, path
+  `/api/auth`). CSRF is disabled because nothing else uses cookies.
+- Public without auth: OpenAPI docs and Swagger UI (so `pnpm gen:api`
+  works), `/system/info`, `/auth/{signup,login,refresh,logout}`, and
+  `/public/**`. Everything else requires a JWT.
+- Controllers take the caller as a `CurrentUser` parameter (`userId`,
+  `groupId`, `role`; resolved from the JWT, hidden from the spec with
+  `@Parameter(hidden = true)`). Services scope every query by `groupId`.
 - Member endpoints (preferences, attendance confirmation) are reached from
-  email links: `permitAll` at the URL level, authorized by validating the
-  link token in the service.
+  email links and live under `/public/**`: `permitAll` at the URL level,
+  authorized by validating the link token in the service
+  (`membertoken/MemberTokenService`).
+- Auth errors (401/403) are returned as `ProblemDetail` via
+  `ProblemDetailSecurityHandlers`.
 - Don't weaken security config (CSRF, CORS, auth rules) to make a test or
   the frontend work; ask first.
 - Authorization checks live in services or method security, not just URL rules.
