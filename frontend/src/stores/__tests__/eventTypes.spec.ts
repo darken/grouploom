@@ -219,4 +219,63 @@ describe('event types store', () => {
     expect(ok).toBe(false)
     expect(store.error?.status).toBe(404)
   })
+
+  describe('picker options', () => {
+    it('fetchActiveOptions loads up to 100 active types sorted by name', async () => {
+      get.mockResolvedValue(pageOf([item('1'), item('2')]))
+      const store = useEventTypesStore()
+
+      await store.fetchActiveOptions()
+
+      expect(get).toHaveBeenCalledWith('/event-types', {
+        params: { query: { archived: false, page: 0, size: 100, sort: ['name,asc'] } },
+      })
+      expect(store.activeOptions.map((i) => i.id)).toEqual(['1', '2'])
+      expect(store.optionsLoaded).toBe(true)
+    })
+
+    it('fetchActiveOptions is cached until something changes', async () => {
+      get.mockResolvedValue(pageOf([item('1')]))
+      const store = useEventTypesStore()
+
+      await store.fetchActiveOptions()
+      await store.fetchActiveOptions()
+
+      expect(get).toHaveBeenCalledOnce()
+    })
+
+    it('fetchArchivedOptions loads archived types for the filter', async () => {
+      get.mockResolvedValue(pageOf([item('9', { archived: true })]))
+      const store = useEventTypesStore()
+
+      await store.fetchArchivedOptions()
+
+      expect(get).toHaveBeenCalledWith('/event-types', {
+        params: { query: { archived: true, page: 0, size: 100, sort: ['name,asc'] } },
+      })
+      expect(store.archivedOptions.map((i) => i.id)).toEqual(['9'])
+    })
+
+    it('create, update and remove drop the cache so the next fetch reloads', async () => {
+      get.mockResolvedValue(pageOf([item('1')]))
+      post.mockResolvedValue({ data: item('2'), response: new Response() })
+      put.mockResolvedValue({ data: item('1', { archived: true }), response: new Response() })
+      del.mockResolvedValue({ response: new Response(null, { status: 204 }) })
+      const store = useEventTypesStore()
+      await store.fetch({ archived: false, page: 0 })
+      await store.fetchActiveOptions()
+      expect(get).toHaveBeenCalledTimes(2)
+
+      await store.create(input)
+      await store.fetchActiveOptions()
+      await store.update('1', { ...input, archived: true, version: 0 })
+      await store.fetchActiveOptions()
+      await store.remove('1')
+      await store.fetchActiveOptions()
+
+      // 2 initial + 1 reload per mutation on the list (create/remove) + 1 options reload per mutation.
+      const optionCalls = get.mock.calls.filter(([, init]) => init?.params?.query?.size === 100)
+      expect(optionCalls).toHaveLength(4)
+    })
+  })
 })

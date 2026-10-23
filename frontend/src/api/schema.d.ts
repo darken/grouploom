@@ -20,7 +20,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/event-types/{id}": {
+    "/events/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -31,6 +31,22 @@ export interface paths {
         put: operations["update_1"];
         post?: never;
         delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/event-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_2"];
+        put: operations["update_2"];
+        post?: never;
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -56,6 +72,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List events
+         * @description `when=upcoming` (default) lists events that haven't ended, soonest first; `when=past` lists ended events, most recent first. The order is fixed, so `sort` is ignored. Page size is capped at 100.
+         */
+        get: operations["list_1"];
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/event-types": {
         parameters: {
             query?: never;
@@ -67,9 +103,9 @@ export interface paths {
          * List event types
          * @description Sortable properties: name, createdAt (e.g. `sort=name,asc`). Page size is capped at 100.
          */
-        get: operations["list_1"];
+        get: operations["list_2"];
         put?: never;
-        post: operations["create_1"];
+        post: operations["create_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -216,6 +252,75 @@ export interface components {
             /** @description Input the conflict belongs to */
             field?: string;
         };
+        UpdateEventRequest: {
+            /** Format: uuid */
+            eventTypeId: string;
+            title: string;
+            description?: string;
+            location?: string;
+            /**
+             * Format: date-time
+             * @description Wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T10:00:00
+             */
+            localStart: string;
+            /**
+             * Format: date-time
+             * @description Wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T12:00:00
+             */
+            localEnd: string;
+            /** @example Europe/Madrid */
+            timeZone: string;
+            /** Format: int64 */
+            version: number;
+        };
+        EventResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description?: string;
+            location?: string;
+            /**
+             * Format: date-time
+             * @description The start as an instant (UTC offset included).
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description The end as an instant (UTC offset included).
+             */
+            end: string;
+            /**
+             * Format: date-time
+             * @description The start as wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T10:00:00
+             */
+            localStart: string;
+            /**
+             * Format: date-time
+             * @description The end as wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T12:00:00
+             */
+            localEnd: string;
+            /** @example Europe/Madrid */
+            timeZone: string;
+            eventType: components["schemas"]["EventTypeSummary"];
+            /** Format: int64 */
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        EventTypeSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            color: "blue" | "green" | "orange" | "red" | "purple" | "pink" | "teal" | "gray";
+            archived: boolean;
+        };
         UpdateEventTypeRequest: {
             name: string;
             description?: string;
@@ -248,6 +353,27 @@ export interface components {
             name: string;
             /** Format: email */
             email: string;
+        };
+        CreateEventRequest: {
+            /** Format: uuid */
+            eventTypeId: string;
+            title: string;
+            description?: string;
+            location?: string;
+            /**
+             * Format: date-time
+             * @description Wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T10:00:00
+             */
+            localStart: string;
+            /**
+             * Format: date-time
+             * @description Wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T12:00:00
+             */
+            localEnd: string;
+            /** @example Europe/Madrid */
+            timeZone: string;
         };
         CreateEventTypeRequest: {
             name: string;
@@ -307,6 +433,10 @@ export interface components {
         };
         PagedModelMemberResponse: {
             content: components["schemas"]["MemberResponse"][];
+            page: components["schemas"]["PageMetadata"];
+        };
+        PagedModelEventResponse: {
+            content: components["schemas"]["EventResponse"][];
             page: components["schemas"]["PageMetadata"];
         };
         PagedModelEventTypeResponse: {
@@ -470,7 +600,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventTypeResponse"];
+                    "application/json": components["schemas"]["EventResponse"];
                 };
             };
             /** @description Not found */
@@ -494,6 +624,146 @@ export interface operations {
         };
     };
     update_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Invalid input. Codes: event.start-in-past, event.too-long, event.end-before-start, event.event-type-archived, event.event-type-not-found */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Stale version (code event.stale) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    delete_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    get_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    update_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -546,7 +816,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -566,6 +836,15 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Used by events (code event-type.in-use); archive it instead */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -666,6 +945,86 @@ export interface operations {
     list_1: {
         parameters: {
             query?: {
+                when?: "upcoming" | "past";
+                eventTypeId?: string;
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedModelEventResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Invalid input. Codes: event.start-in-past, event.too-long, event.end-before-start, event.event-type-archived, event.event-type-not-found */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: {
                 archived?: boolean;
                 /** @description Zero-based page index (0..N) */
                 page?: number;
@@ -700,7 +1059,7 @@ export interface operations {
             };
         };
     };
-    create_1: {
+    create_2: {
         parameters: {
             query?: never;
             header?: never;

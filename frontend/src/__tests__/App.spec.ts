@@ -24,6 +24,17 @@ const signedIn = {
 }
 const signedOut = { error: { status: 401 }, response: new Response(null, { status: 401 }) }
 
+const info = { data: { name: 'backend', version: '1.2.3' }, response: new Response() }
+const noEvents = {
+  data: { content: [], page: { number: 0, size: 3, totalElements: 0, totalPages: 1 } },
+  response: new Response(),
+}
+
+/** Answers GETs by path: system info for the footer, an empty event list for the home page. */
+function serve(systemInfo: unknown = info) {
+  get.mockImplementation(async (path: string) => (path === '/events' ? noEvents : systemInfo))
+}
+
 async function mountApp(path = '/') {
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -39,7 +50,7 @@ describe('App', () => {
   beforeEach(() => {
     get.mockReset()
     post.mockReset()
-    get.mockResolvedValue({ data: { name: 'backend', version: '1.2.3' }, response: new Response() })
+    serve()
   })
 
   it('shows the welcome page, group and footer version to a signed-in user', async () => {
@@ -65,7 +76,7 @@ describe('App', () => {
 
   it('hides the footer version quietly when the backend is down', async () => {
     post.mockResolvedValue(signedIn)
-    get.mockResolvedValue({ error: { status: 502, title: 'Bad Gateway' }, response: new Response(null, { status: 502 }) })
+    serve({ error: { status: 502, title: 'Bad Gateway' }, response: new Response(null, { status: 502 }) })
 
     const { wrapper } = await mountApp()
 

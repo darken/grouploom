@@ -10,6 +10,8 @@ async function mountHeader(path: string) {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<i/>' } },
+      { path: '/events', component: { template: '<i/>' } },
+      { path: '/events/:id', component: { template: '<i/>' } },
       { path: '/event-types', component: { template: '<i/>' } },
       { path: '/members', component: { template: '<i/>' } },
     ],
@@ -20,11 +22,11 @@ async function mountHeader(path: string) {
 }
 
 describe('AppHeader navigation', () => {
-  it('has Home, Event types and Members links in a labelled nav', async () => {
+  it('has Home, Events, Event types and Members links in a labelled nav', async () => {
     const wrapper = await mountHeader('/')
 
     const nav = wrapper.find('nav[aria-label=Primary]')
-    expect(nav.findAll('a').map((a) => a.text())).toEqual(['Home', 'Event types', 'Members'])
+    expect(nav.findAll('a').map((a) => a.text())).toEqual(['Home', 'Events', 'Event types', 'Members'])
   })
 
   it('marks only the current page link with aria-current', async () => {
@@ -39,5 +41,12 @@ describe('AppHeader navigation', () => {
 
     const current = wrapper.findAll('nav a').filter((a) => a.attributes('aria-current') === 'page')
     expect(current.map((a) => a.text())).toEqual(['Members'])
+  })
+
+  it('marks only Events (not Event types) as current on an event page', async () => {
+    const wrapper = await mountHeader('/events/abc')
+
+    const current = wrapper.findAll('nav a').filter((a) => a.attributes('aria-current') === 'page')
+    expect(current.map((a) => a.text())).toEqual(['Events'])
   })
 })

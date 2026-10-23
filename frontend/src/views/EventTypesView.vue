@@ -109,7 +109,20 @@ async function confirmDelete() {
   if (await store.remove(target.id)) {
     toast.show('Deleted')
     await syncPage()
+  } else if (store.error?.problem.code === 'event-type.in-use') {
+    // Events use this type, so offer the alternative instead of an error banner.
+    store.error = null
+    archiveInstead.value = target
   }
+}
+
+// --- delete refused because events use the type ---
+const archiveInstead = ref<EventType | null>(null)
+
+async function confirmArchiveInstead() {
+  const target = archiveInstead.value
+  archiveInstead.value = null
+  if (target) await setArchived(target, true)
 }
 
 // The store may have stepped back a page after a delete; keep the URL in step with it.
@@ -213,6 +226,15 @@ async function syncPage() {
       destructive
       @confirm="confirmDelete"
       @cancel="deleting = null"
+    />
+
+    <ConfirmDialog
+      :open="archiveInstead !== null"
+      :title="`Can't delete '${archiveInstead?.name ?? ''}'`"
+      message="This event type is used by events. Archive it instead?"
+      confirm-label="Archive"
+      @confirm="confirmArchiveInstead"
+      @cancel="archiveInstead = null"
     />
   </section>
 </template>

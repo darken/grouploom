@@ -270,4 +270,59 @@ describe('EventTypesView', () => {
     expect(wrapper.find('[role=alert]').exists()).toBe(false)
     expect(wrapper.findAll('li')).toHaveLength(1)
   })
+
+  it('switches the delete dialog to "Archive instead" when the type is in use, and archives on confirm', async () => {
+    get.mockResolvedValue(pageOf([item('1', { name: 'Practice', version: 2 })]))
+    del.mockResolvedValue({
+      error: { status: 409, code: 'event-type.in-use', detail: 'This event type is used by events. Archive it instead.' },
+      response: new Response(null, { status: 409 }),
+    })
+    put.mockResolvedValue({ data: item('1', { name: 'Practice', archived: true, version: 3 }), response: new Response() })
+    const { wrapper } = await mountView()
+    await wrapper.find('button[aria-label="Actions for Practice"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Delete')!.trigger('click')
+
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Delete')!.trigger('click')
+    await flushPromises()
+
+    const archiveDialog = dialogOpen(wrapper)[0]!
+    expect(archiveDialog.text()).toContain('This event type is used by events. Archive it instead?')
+    expect(wrapper.find('[role=alert]').exists()).toBe(false)
+    expect(put).not.toHaveBeenCalled()
+
+    await archiveDialog.findAll('button').find((b) => b.text() === 'Archive')!.trigger('click')
+    await flushPromises()
+
+    expect(put).toHaveBeenCalledWith('/event-types/{id}', expect.objectContaining({ body: expect.objectContaining({ archived: true, version: 2 }) }))
+    expect(dialogOpen(wrapper)).toHaveLength(0)
+    expect(wrapper.find('[aria-live=polite]').text()).toContain('Archived')
+  })
+
+  it('lets the user cancel the "Archive instead" offer without archiving', async () => {
+    get.mockResolvedValue(pageOf([item('1', { name: 'Practice' })]))
+    del.mockResolvedValue({ error: { status: 409, code: 'event-type.in-use' }, response: new Response(null, { status: 409 }) })
+    const { wrapper } = await mountView()
+    await wrapper.find('button[aria-label="Actions for Practice"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Delete')!.trigger('click')
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Delete')!.trigger('click')
+    await flushPromises()
+
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
+
+    expect(put).not.toHaveBeenCalled()
+    expect(dialogOpen(wrapper)).toHaveLength(0)
+  })
+
+  it('still shows the error banner for other delete failures', async () => {
+    get.mockResolvedValue(pageOf([item('1', { name: 'Practice' })]))
+    del.mockResolvedValue({ error: { status: 500, title: 'Server error' }, response: new Response(null, { status: 500 }) })
+    const { wrapper } = await mountView()
+    await wrapper.find('button[aria-label="Actions for Practice"]').trigger('click')
+    await wrapper.findAll('[role=menuitem]').find((m) => m.text() === 'Delete')!.trigger('click')
+
+    await dialogOpen(wrapper)[0]!.findAll('button').find((b) => b.text() === 'Delete')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role=alert]').exists()).toBe(true)
+  })
 })

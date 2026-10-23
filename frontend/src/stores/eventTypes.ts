@@ -21,6 +21,7 @@ export interface PageInfo {
 }
 
 const PAGE_SIZE = 20
+const OPTIONS_SIZE = 100
 
 function toApiError(e: unknown): ApiError {
   return e instanceof ApiError
@@ -40,6 +41,12 @@ export const useEventTypesStore = defineStore('eventTypes', () => {
   const saveError = ref<ApiError | null>(null)
   /** The server's copy of the last successful update (e.g. to build an Undo). */
   const lastSaved = ref<EventType | null>(null)
+
+  // Pickers (event form, events filter) need every type, not one page; cached until a type changes.
+  const activeOptions = ref<EventType[]>([])
+  const archivedOptions = ref<EventType[]>([])
+  const optionsLoaded = ref(false)
+  const archivedOptionsLoaded = ref(false)
 
   const page = computed(() => pageInfo.value?.number ?? 0)
   const stale = computed(() => saveError.value?.problem.code === 'event-type.stale')
@@ -76,6 +83,32 @@ export const useEventTypesStore = defineStore('eventTypes', () => {
     }
   }
 
+  async function loadOptions(archived: boolean): Promise<EventType[]> {
+    const data = unwrap(
+      await api.GET('/event-types', {
+        params: { query: { archived, page: 0, size: OPTIONS_SIZE, sort: ['name,asc'] } },
+      }),
+    )
+    return data.content
+  }
+
+  async function fetchActiveOptions() {
+    if (optionsLoaded.value) return
+    activeOptions.value = await loadOptions(false)
+    optionsLoaded.value = true
+  }
+
+  async function fetchArchivedOptions() {
+    if (archivedOptionsLoaded.value) return
+    archivedOptions.value = await loadOptions(true)
+    archivedOptionsLoaded.value = true
+  }
+
+  function invalidateOptions() {
+    optionsLoaded.value = false
+    archivedOptionsLoaded.value = false
+  }
+
   const reload = () => fetch({ archived: archived.value, page: page.value })
 
   async function save(request: () => Promise<void>): Promise<boolean> {
@@ -95,6 +128,7 @@ export const useEventTypesStore = defineStore('eventTypes', () => {
   const create = (input: CreateEventTypeInput) =>
     save(async () => {
       unwrap(await api.POST('/event-types', { body: input }))
+      invalidateOptions()
       await reload()
     })
 
@@ -102,6 +136,7 @@ export const useEventTypesStore = defineStore('eventTypes', () => {
     save(async () => {
       const updated = unwrap(await api.PUT('/event-types/{id}', { params: { path: { id } }, body: input }))
       lastSaved.value = updated
+      invalidateOptions()
       if (updated.archived !== archived.value) {
         items.value = items.value.filter((i) => i.id !== id)
         if (pageInfo.value) pageInfo.value.totalElements = Math.max(0, pageInfo.value.totalElements - 1)
@@ -119,6 +154,7 @@ export const useEventTypesStore = defineStore('eventTypes', () => {
       error.value = toApiError(e)
       return false
     }
+    invalidateOptions()
     await reload()
     if (items.value.length === 0 && page.value > 0 && !error.value) {
       await fetch({ archived: archived.value, page: page.value - 1 })
@@ -132,6 +168,7 @@ export const useEventTypesStore = defineStore('eventTypes', () => {
 
   return {
     items, pageInfo, page, archived, loading, loaded, saving, error, saveError, lastSaved, stale, fieldErrors,
+    activeOptions, archivedOptions, optionsLoaded, fetchActiveOptions, fetchArchivedOptions,
     fetch, create, update, remove, clearSaveError,
   }
 })
