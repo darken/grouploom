@@ -130,3 +130,7 @@ Then fix any type errors in the frontend.
 - Detailed backend and frontend conventions are in
   [`backend/CLAUDE.md`](backend/CLAUDE.md) and
   [`frontend/CLAUDE.md`](frontend/CLAUDE.md).
+
+## License
+
+GroupLoom is released under the [MIT License](LICENSE.txt).
