@@ -63,6 +63,25 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void badRequest_withCodeAndField_returns400WithCodeAndFieldErrors() throws Exception {
+		mockMvc.perform(get("/test/bad-request"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value("Start is in the past."))
+			.andExpect(jsonPath("$.code").value("thing.in-past"))
+			.andExpect(jsonPath("$.errors[0].field").value("start"))
+			.andExpect(jsonPath("$.errors[0].message").value("Start is in the past."));
+	}
+
+	@Test
+	void badRequest_withoutField_omitsErrorsList() throws Exception {
+		mockMvc.perform(get("/test/bad-request-plain"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("thing.bad"))
+			.andExpect(jsonPath("$.errors").doesNotExist());
+	}
+
+	@Test
 	void unknownSortProperty_returns400ProblemDetail() throws Exception {
 		mockMvc.perform(get("/test/bad-sort"))
 			.andExpect(status().isBadRequest())
@@ -102,6 +121,16 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/conflict-coded")
 		void conflictCoded() {
 			throw new ConflictException("taken", "thing.taken", "name");
+		}
+
+		@GetMapping("/test/bad-request")
+		void badRequest() {
+			throw new BadRequestException("Start is in the past.", "thing.in-past", "start");
+		}
+
+		@GetMapping("/test/bad-request-plain")
+		void badRequestPlain() {
+			throw new BadRequestException("Bad.", "thing.bad", null);
 		}
 
 		@GetMapping("/test/bad-sort")

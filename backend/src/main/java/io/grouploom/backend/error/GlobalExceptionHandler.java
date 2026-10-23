@@ -38,6 +38,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem;
 	}
 
+	// Same shape as Bean Validation errors (`errors[{field, message}]`), plus a stable `code`.
+	@ExceptionHandler(BadRequestException.class)
+	ProblemDetail handleBadRequest(BadRequestException ex) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		if (ex.getCode() != null) {
+			problem.setProperty("code", ex.getCode());
+		}
+		if (ex.getField() != null) {
+			problem.setProperty("errors", List.of(new FieldError(ex.getField(), ex.getMessage())));
+		}
+		return problem;
+	}
+
 	// Safety net: sort parameters are whitelisted in controllers, but never leak a 500 for a bad one.
 	@ExceptionHandler(PropertyReferenceException.class)
 	ProblemDetail handleInvalidSort(PropertyReferenceException ex) {
