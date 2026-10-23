@@ -35,6 +35,9 @@ public class SmtpEmailGateway implements EmailGateway {
 			helper.setTo(email.to());
 			helper.setSubject(email.subject());
 			helper.setText(email.text(), email.html());
+			for (var header : email.headers().entrySet()) {
+				message.addHeader(header.getKey(), header.getValue());
+			}
 		}
 		catch (MessagingException | UnsupportedEncodingException e) {
 			throw new MailPreparationException(e);

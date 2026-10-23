@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments.html :: layout(~{::#content})}">
+<body>
+<th:block id="content">
+  <p class="secondary" style="margin:0 0 4px 0;font-size:14px;line-height:20px;color:#6e6e73;">
+    <span th:style="'color:' + ${typeColor}">&#9679;</span>
+    <span th:text="${typeName}">Type</span>
+  </p>
+  <p th:class="${cancelled} ? 'danger' : 'secondary'" th:text="${statusLabel}" th:style="'margin:0 0 8px 0;font-size:14px;line-height:20px;font-weight:600;color:' + (${cancelled} ? '#d70015' : '#6e6e73')">Status</p>
+  <h1 class="primary" th:text="${title}" th:style="'margin:0 0 16px 0;font-size:24px;line-height:30px;font-weight:600;color:#1d1d1f;' + (${cancelled} ? 'text-decoration:line-through;' : '')">Title</h1>
+  <p class="primary" th:text="${timeLine}" style="margin:0 0 4px 0;font-size:16px;line-height:24px;color:#1d1d1f;">Time</p>
+  <p class="primary" th:if="${location != null}" th:text="${location}" style="margin:0 0 4px 0;font-size:16px;line-height:24px;color:#1d1d1f;">Location</p>
+  <p class="secondary" th:if="${description != null}" th:text="${description}" style="margin:16px 0 0 0;font-size:15px;line-height:22px;color:#6e6e73;white-space:pre-line;">Description</p>
+  <div class="note" th:if="${note != null}" style="margin:24px 0 0 0;padding:14px 16px;background-color:#f5f5f7;border-radius:12px;">
+    <p class="primary" th:text="${note}" style="margin:0;font-size:15px;line-height:22px;color:#1d1d1f;white-space:pre-line;">Note</p>
+  </div>
+</th:block>
+</body>
+</html>

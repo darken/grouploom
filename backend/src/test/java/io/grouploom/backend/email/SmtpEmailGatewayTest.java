@@ -106,4 +106,21 @@ class SmtpEmailGatewayTest {
 		}
 	}
 
+	@Test
+	void send_setsTheCustomHeaders() throws Exception {
+		MimeMessage sent = send(new OutgoingEmail("ana@example.com", "Chess Club via GroupLoom", null, "S", "t", "<p>h</p>",
+				java.util.Map.of("List-Unsubscribe", "<https://app.example.com/api/public/unsubscribe?t=x>",
+						"List-Unsubscribe-Post", "List-Unsubscribe=One-Click")));
+
+		assertThat(sent.getHeader("List-Unsubscribe")).containsExactly("<https://app.example.com/api/public/unsubscribe?t=x>");
+		assertThat(sent.getHeader("List-Unsubscribe-Post")).containsExactly("List-Unsubscribe=One-Click");
+	}
+
+	@Test
+	void send_withoutCustomHeaders_addsNone() throws Exception {
+		MimeMessage sent = send(new OutgoingEmail("ana@example.com", "Chess Club via GroupLoom", null, "S", "t", "<p>h</p>"));
+
+		assertThat(sent.getHeader("List-Unsubscribe")).isNull();
+	}
+
 }

@@ -1,0 +1,19 @@
+[[${groupName}]]
+
+Cancelled
+[[${title}]]
+[[${timeLine}]]
+[# th:if="${location != null}"]
+[[${location}]]
+[/]
+[# th:if="${description != null}"]
+[[${description}]]
+[/]
+[# th:if="${note != null}"]
+[[${note}]]
+[/]
+
+--
+You're getting this because you're a member of [[${groupName}]].
+Choose which events you hear about:
+[[${preferencesLink}]]
