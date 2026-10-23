@@ -43,4 +43,28 @@ class OpenApiContractIntegrationTest {
 				.value("#/components/schemas/ProblemDetail"));
 	}
 
+	@Test
+	void publicPreferences_documentSuccessResponsesTheMemberTokenHeaderAndNoBearerRequirement() throws Exception {
+		docs()
+			.andExpect(jsonPath("$.paths['/public/preferences'].get.responses['200'].content['application/json'].schema['$ref']")
+				.value("#/components/schemas/PublicPreferencesResponse"))
+			.andExpect(jsonPath("$.paths['/public/preferences'].put.responses['200'].content['application/json'].schema['$ref']")
+				.value("#/components/schemas/PublicPreferencesResponse"))
+			.andExpect(jsonPath("$.paths['/public/preferences'].get.responses['401'].content['application/problem+json'].schema['$ref']")
+				.value("#/components/schemas/ProblemDetail"))
+			.andExpect(jsonPath("$.paths['/public/preferences'].get.parameters[?(@.name=='X-Member-Token')].in").value("header"))
+			.andExpect(jsonPath("$.paths['/public/preferences'].get.parameters[?(@.name=='X-Member-Token')].required").value(true))
+			.andExpect(jsonPath("$.paths['/public/preferences'].put.parameters[?(@.name=='X-Member-Token')].required").value(true))
+			.andExpect(jsonPath("$.paths['/public/preferences'].get.security").doesNotExist())
+			.andExpect(jsonPath("$.paths['/public/preferences'].put.security").doesNotExist());
+	}
+
+	@Test
+	void preferencesLink_documentsTheCreatedResponse() throws Exception {
+		docs()
+			.andExpect(jsonPath("$.paths['/members/{id}/preferences-link'].post.responses['201'].content['application/json'].schema['$ref']")
+				.value("#/components/schemas/PreferencesLinkResponse"))
+			.andExpect(jsonPath("$.paths['/members/{id}/preferences-link'].post.security[0].bearerAuth").exists());
+	}
+
 }

@@ -39,6 +39,7 @@ public class PublicPreferenceController {
 	@GetMapping
 	@Operation(summary = "Get a member's email preferences",
 			description = "Authorized by the member link token, not by a user session.")
+	@ApiResponse(responseCode = "200", description = "OK", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PublicPreferencesResponse.class)))
 	@ApiResponse(responseCode = "401",
 			description = "Invalid link (member-token.invalid) or expired link (member-token.expired)",
 			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
@@ -51,6 +52,7 @@ public class PublicPreferenceController {
 	@PutMapping
 	@Operation(summary = "Update a member's email preferences",
 			description = "Event types missing from the request keep their current choice.")
+	@ApiResponse(responseCode = "200", description = "OK", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PublicPreferencesResponse.class)))
 	@ApiResponse(responseCode = "400", description = "Unknown event type (code preference.unknown-event-type)",
 			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
 	@ApiResponse(responseCode = "401",
