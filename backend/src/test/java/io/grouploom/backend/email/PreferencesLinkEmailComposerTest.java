@@ -1,6 +1,8 @@
 package io.grouploom.backend.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,6 +14,8 @@ import io.grouploom.backend.config.MailTemplateConfig;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.member.Member;
+import io.grouploom.backend.membertoken.MemberTokenPurpose;
+import io.grouploom.backend.membertoken.MemberTokenService;
 import io.grouploom.backend.membertoken.MemberTokenService.IssuedToken;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
@@ -23,8 +27,9 @@ class PreferencesLinkEmailComposerTest {
 	private static final String LINK = "https://app.example.com/m/preferences#t=tok_abc-123";
 
 	private final TemplateEngine engine = new MailTemplateConfig().mailTemplateEngine();
+	private final MemberTokenService memberTokens = mock(MemberTokenService.class);
 	private final PreferencesLinkEmailComposer composer = new PreferencesLinkEmailComposer(engine,
-			TestProperties.app("https://app.example.com/", Duration.ofDays(60)));
+			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), memberTokens);
 
 	private OutgoingEmail compose(String groupName, String memberName) {
 		Group group = new Group(groupName, NOW);
@@ -99,13 +104,27 @@ class PreferencesLinkEmailComposerTest {
 	@Test
 	void compose_formatsTtlInHoursWhenNotWholeDays() {
 		PreferencesLinkEmailComposer shortLived = new PreferencesLinkEmailComposer(engine,
-				TestProperties.app("https://app.example.com", Duration.ofHours(36)));
+				TestProperties.app("https://app.example.com", Duration.ofHours(36)), memberTokens);
 		Group group = new Group("Chess Club", NOW);
 		Member member = new Member(group, "Ana", "ana@example.com", NOW);
 
 		OutgoingEmail email = shortLived.compose(member, group, null, TOKEN);
 
 		assertThat(email.text()).contains("This link works for 36 hours.");
+	}
+
+	@Test
+	void compose_fromAnEntry_issuesAPreferencesTokenAndBuildsTheLink() {
+		Group group = new Group("Chess Club", NOW);
+		Member member = new Member(group, "Ana", "ana@example.com", NOW);
+		User organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, NOW);
+		given(memberTokens.issue(member, MemberTokenPurpose.PREFERENCES)).willReturn(TOKEN);
+		EmailOutboxEntry entry = new EmailOutboxEntry(group, member, organizer, EmailKind.PREFERENCES_LINK, NOW);
+
+		OutgoingEmail email = composer.compose(entry);
+
+		assertThat(composer.kinds()).containsExactly(EmailKind.PREFERENCES_LINK);
+		assertThat(email.text()).contains(LINK);
 	}
 
 }

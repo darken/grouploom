@@ -2,7 +2,9 @@ package io.grouploom.backend.email;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,9 +15,6 @@ import org.springframework.mail.MailPreparationException;
 import org.springframework.stereotype.Component;
 
 import io.grouploom.backend.config.AppProperties;
-import io.grouploom.backend.membertoken.MemberTokenPurpose;
-import io.grouploom.backend.membertoken.MemberTokenService;
-import io.grouploom.backend.membertoken.MemberTokenService.IssuedToken;
 
 /**
  * Sends queued emails: claim a batch, then send each with no transaction or row lock held, then record the
@@ -29,19 +28,18 @@ public class EmailDispatcher {
 
 	private final EmailOutboxRepository outbox;
 	private final EmailOutboxRecorder recorder;
-	private final MemberTokenService memberTokens;
-	private final PreferencesLinkEmailComposer composer;
+	private final Map<EmailKind, EmailComposer> composers;
 	private final EmailGateway gateway;
 	private final AppProperties properties;
 	private final Clock clock;
 
 	public EmailDispatcher(EmailOutboxRepository outbox, EmailOutboxRecorder recorder,
-			MemberTokenService memberTokens, PreferencesLinkEmailComposer composer, EmailGateway gateway,
-			AppProperties properties, Clock clock) {
+			List<EmailComposer> composers, EmailGateway gateway, AppProperties properties, Clock clock) {
 		this.outbox = outbox;
 		this.recorder = recorder;
-		this.memberTokens = memberTokens;
-		this.composer = composer;
+		Map<EmailKind, EmailComposer> byKind = new EnumMap<>(EmailKind.class);
+		composers.forEach(c -> c.kinds().forEach(kind -> byKind.put(kind, c)));
+		this.composers = byKind;
 		this.gateway = gateway;
 		this.properties = properties;
 		this.clock = clock;
@@ -71,10 +69,14 @@ public class EmailDispatcher {
 			return;
 		}
 		EmailOutboxEntry entry = loaded.get();
+		EmailComposer composer = composers.get(entry.getKind());
+		if (composer == null) {
+			log.warn("Outbox entry {} has no composer for kind {}", id, entry.getKind());
+			recorder.failed(id, "No composer for kind " + entry.getKind());
+			return;
+		}
 		try {
-			// A fresh token per attempt, so nothing stored in the outbox can be used as a link.
-			IssuedToken token = memberTokens.issue(entry.getMember(), MemberTokenPurpose.PREFERENCES);
-			gateway.send(composer.compose(entry.getMember(), entry.getGroup(), entry.getRequestedBy(), token));
+			gateway.send(composer.compose(entry));
 		}
 		catch (MailParseException | MailPreparationException e) {
 			log.warn("Outbox entry {} failed permanently: {}", id, e.getClass().getSimpleName());

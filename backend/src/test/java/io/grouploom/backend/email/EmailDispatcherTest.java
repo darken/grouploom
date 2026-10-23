@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,9 +32,6 @@ import io.grouploom.backend.config.AppProperties;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.member.Member;
-import io.grouploom.backend.membertoken.MemberTokenPurpose;
-import io.grouploom.backend.membertoken.MemberTokenService;
-import io.grouploom.backend.membertoken.MemberTokenService.IssuedToken;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
 
@@ -41,11 +39,10 @@ import io.grouploom.backend.user.User;
 class EmailDispatcherTest {
 
 	private static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
-	private static final IssuedToken TOKEN = new IssuedToken("raw-secret-token", NOW.plus(Duration.ofDays(60)));
+	private static final String SECRET = "raw-secret-token";
 
 	@Mock EmailOutboxRepository outbox;
-	@Mock MemberTokenService memberTokens;
-	@Mock PreferencesLinkEmailComposer composer;
+	@Mock EmailComposer composer;
 	@Mock EmailGateway gateway;
 
 	private final AppProperties properties = TestProperties.app("http://localhost", Duration.ofDays(60));
@@ -59,8 +56,9 @@ class EmailDispatcherTest {
 
 	@BeforeEach
 	void setUp() {
-		dispatcher = new EmailDispatcher(outbox, new EmailOutboxRecorder(outbox, properties, clock), memberTokens,
-				composer, gateway, properties, clock);
+		lenient().when(composer.kinds()).thenReturn(Set.of(EmailKind.PREFERENCES_LINK));
+		dispatcher = new EmailDispatcher(outbox, new EmailOutboxRecorder(outbox, properties, clock),
+				List.of(composer), gateway, properties, clock);
 		group = new Group("Club", NOW);
 		member = new Member(group, "Ana", "ana@example.com", NOW);
 		organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, NOW);
@@ -81,9 +79,8 @@ class EmailDispatcherTest {
 			.willReturn(java.util.Arrays.stream(entries).map(EmailOutboxEntry::getId).toList());
 	}
 
-	private void composesWithToken() {
-		given(memberTokens.issue(member, MemberTokenPurpose.PREFERENCES)).willReturn(TOKEN);
-		given(composer.compose(member, group, organizer, TOKEN)).willReturn(composed);
+	private void composes() {
+		given(composer.compose(any(EmailOutboxEntry.class))).willReturn(composed);
 	}
 
 	@Test
@@ -96,10 +93,10 @@ class EmailDispatcherTest {
 	}
 
 	@Test
-	void dispatchBatch_onSuccess_issuesATokenAtSendTimeAndMarksTheEntrySent() {
+	void dispatchBatch_onSuccess_composesAtSendTimeAndMarksTheEntrySent() {
 		EmailOutboxEntry entry = claimedEntry();
 		claims(entry);
-		composesWithToken();
+		composes();
 
 		assertThat(dispatcher.dispatchBatch()).isEqualTo(1);
 
@@ -113,7 +110,7 @@ class EmailDispatcherTest {
 	void dispatchBatch_onTransientMailFailure_schedulesARetry() {
 		EmailOutboxEntry entry = claimedEntry();
 		claims(entry);
-		composesWithToken();
+		composes();
 		doThrow(new MailSendException("smtp down")).when(gateway).send(composed);
 
 		dispatcher.dispatchBatch();
@@ -128,7 +125,7 @@ class EmailDispatcherTest {
 	void dispatchBatch_onParseFailure_failsImmediately() {
 		EmailOutboxEntry entry = claimedEntry();
 		claims(entry);
-		composesWithToken();
+		composes();
 		doThrow(new MailParseException("bad address")).when(gateway).send(composed);
 
 		dispatcher.dispatchBatch();
@@ -141,7 +138,7 @@ class EmailDispatcherTest {
 	void dispatchBatch_onUnexpectedError_retriesInsteadOfLosingTheEmail() {
 		EmailOutboxEntry entry = claimedEntry();
 		claims(entry);
-		given(memberTokens.issue(member, MemberTokenPurpose.PREFERENCES)).willThrow(new IllegalStateException("db blip"));
+		given(composer.compose(any(EmailOutboxEntry.class))).willThrow(new IllegalStateException("db blip"));
 
 		dispatcher.dispatchBatch();
 
@@ -155,8 +152,7 @@ class EmailDispatcherTest {
 		EmailOutboxEntry failing = claimedEntry();
 		EmailOutboxEntry healthy = claimedEntry();
 		claims(failing, healthy);
-		given(memberTokens.issue(member, MemberTokenPurpose.PREFERENCES)).willReturn(TOKEN);
-		given(composer.compose(member, group, organizer, TOKEN)).willReturn(composed);
+		composes();
 		doThrow(new MailSendException("first fails")).doNothing().when(gateway).send(composed);
 
 		assertThat(dispatcher.dispatchBatch()).isEqualTo(2);
@@ -166,10 +162,10 @@ class EmailDispatcherTest {
 	}
 
 	@Test
-	void dispatchBatch_issuesAFreshTokenPerAttemptAndNeverStoresItOnTheEntry() throws Exception {
+	void dispatchBatch_composesPerAttemptAndNeverStoresContentOnTheEntry() throws Exception {
 		EmailOutboxEntry entry = claimedEntry();
 		claims(entry);
-		composesWithToken();
+		composes();
 		doThrow(new MailSendException("smtp down")).doNothing().when(gateway).send(composed);
 
 		dispatcher.dispatchBatch();
@@ -177,10 +173,10 @@ class EmailDispatcherTest {
 		given(outbox.claimDue(NOW, NOW.plus(Duration.ofMinutes(2)), 20)).willReturn(List.of(entry.getId()));
 		dispatcher.dispatchBatch();
 
-		verify(memberTokens, times(2)).issue(member, MemberTokenPurpose.PREFERENCES);
+		verify(composer, times(2)).compose(entry);
 		for (Field field : EmailOutboxEntry.class.getDeclaredFields()) {
 			field.setAccessible(true);
-			assertThat(String.valueOf(field.get(entry))).doesNotContain(TOKEN.raw());
+			assertThat(String.valueOf(field.get(entry))).doesNotContain(SECRET);
 		}
 	}
 
@@ -204,7 +200,41 @@ class EmailDispatcherTest {
 		dispatcher.dispatchBatch();
 
 		verify(gateway, never()).send(any());
-		verify(memberTokens, never()).issue(any(), any());
+		verify(composer, never()).compose(any());
+	}
+
+	@Test
+	void dispatchBatch_routesEachEntryToTheComposerForItsKind() {
+		EmailComposer other = org.mockito.Mockito.mock(EmailComposer.class);
+		given(other.kinds()).willReturn(Set.of(EmailKind.EVENT_CANCELLATION));
+		EmailDispatcher routed = new EmailDispatcher(outbox, new EmailOutboxRecorder(outbox, properties, clock),
+				List.of(composer, other), gateway, properties, clock);
+		EmailOutboxEntry entry = new EmailOutboxEntry(group, member, organizer, EmailKind.EVENT_CANCELLATION, NOW);
+		ReflectionTestUtils.setField(entry, "id", UUID.randomUUID());
+		entry.claim(NOW, Duration.ofMinutes(2));
+		given(outbox.findWithDetailsById(entry.getId())).willReturn(Optional.of(entry));
+		given(outbox.findById(entry.getId())).willReturn(Optional.of(entry));
+		given(outbox.claimDue(NOW, NOW.plus(Duration.ofMinutes(2)), 20)).willReturn(List.of(entry.getId()));
+		given(other.compose(entry)).willReturn(composed);
+
+		routed.dispatchBatch();
+
+		verify(other).compose(entry);
+		verify(composer, never()).compose(any());
+		assertThat(entry.getStatus()).isEqualTo(EmailStatus.SENT);
+	}
+
+	@Test
+	void dispatchBatch_whenNoComposerHandlesTheKind_failsTheEntry() {
+		EmailOutboxEntry entry = claimedEntry();
+		ReflectionTestUtils.setField(entry, "kind", EmailKind.EVENT_INVITATION);
+		claims(entry);
+
+		dispatcher.dispatchBatch();
+
+		assertThat(entry.getStatus()).isEqualTo(EmailStatus.FAILED);
+		assertThat(entry.getLastError()).contains("EVENT_INVITATION");
+		verify(gateway, never()).send(any());
 	}
 
 }
