@@ -7,3 +7,9 @@ services:
       - 'POSTGRES_USER=myuser'
     ports:
       - '5432'
+  mailpit:
+    # Local SMTP sink: SMTP on 1025, web inbox on http://localhost:8025.
+    image: 'axllent/mailpit:v1.27.8'
+    ports:
+      - '1025:1025'
+      - '8025:8025'

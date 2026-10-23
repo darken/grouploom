@@ -1,4 +1,10 @@
 grouploom:
   public-base-url: http://localhost:5173
+  mail:
+    from: no-reply@grouploom.localhost
   auth:
     cookie-secure: false
+spring:
+  mail:
+    host: localhost
+    port: 1025
