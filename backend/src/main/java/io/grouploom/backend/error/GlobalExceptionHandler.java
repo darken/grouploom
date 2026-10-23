@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
@@ -53,6 +54,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		List<FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
 			.map(e -> new FieldError(e.getField(), e.getDefaultMessage()))
+			.toList();
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+		problem.setProperty("errors", errors);
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+
+	// Constraints on @RequestParam / @PathVariable (e.g. @Size) surface here rather than as body errors.
+	@Override
+	protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		List<FieldError> errors = ex.getParameterValidationResults().stream()
+			.flatMap(result -> result.getResolvableErrors().stream()
+				.map(e -> new FieldError(result.getMethodParameter().getParameterName(), e.getDefaultMessage())))
 			.toList();
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
 		problem.setProperty("errors", errors);
