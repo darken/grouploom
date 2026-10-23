@@ -29,6 +29,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import io.grouploom.backend.auth.CurrentUser;
+import io.grouploom.backend.email.dto.BulkEmailResult;
+import io.grouploom.backend.email.dto.EmailQueuedResponse;
 import io.grouploom.backend.member.dto.CreateMemberRequest;
 import io.grouploom.backend.member.dto.MemberResponse;
 import io.grouploom.backend.member.dto.PreferencesLinkResponse;
@@ -103,6 +105,29 @@ public class MemberController {
 	public PreferencesLinkResponse createPreferencesLink(@Parameter(hidden = true) CurrentUser current,
 			@PathVariable UUID id) {
 		return service.createPreferencesLink(current, id);
+	}
+
+	@PostMapping("/{id}/preferences-email")
+	@ResponseStatus(HttpStatus.ACCEPTED)
+	@Operation(summary = "Email a member their preferences link",
+			description = "Queues the email; a background dispatcher sends it, so check `preferencesEmail` on the member for the outcome. "
+					+ "Each call issues a new link when the email is sent.")
+	@ApiResponse(responseCode = "202", description = "Queued", content = @Content(mediaType = "application/json", schema = @Schema(implementation = EmailQueuedResponse.class)))
+	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	@ApiResponse(responseCode = "429", description = "A link was sent to this member recently (code email.cooldown)",
+			content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+	public EmailQueuedResponse sendPreferencesEmail(@Parameter(hidden = true) CurrentUser current,
+			@PathVariable UUID id) {
+		return service.sendPreferencesEmail(current, id);
+	}
+
+	@PostMapping("/preferences-email")
+	@ResponseStatus(HttpStatus.ACCEPTED)
+	@Operation(summary = "Email every member their preferences link",
+			description = "Queues one email per member, skipping members emailed within the cooldown.")
+	@ApiResponse(responseCode = "202", description = "Queued", content = @Content(mediaType = "application/json", schema = @Schema(implementation = BulkEmailResult.class)))
+	public BulkEmailResult sendPreferencesEmailToAll(@Parameter(hidden = true) CurrentUser current) {
+		return service.sendPreferencesEmailToAll(current);
 	}
 
 	@DeleteMapping("/{id}")

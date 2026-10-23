@@ -1,5 +1,6 @@
 package io.grouploom.backend.member;
 
+import io.grouploom.backend.email.dto.EmailDeliveryStatus;
 import io.grouploom.backend.member.dto.MemberResponse;
 
 public final class MemberMapper {
@@ -7,9 +8,10 @@ public final class MemberMapper {
 	private MemberMapper() {
 	}
 
-	public static MemberResponse toResponse(Member m, boolean invitationsPaused) {
+	public static MemberResponse toResponse(Member m, boolean invitationsPaused,
+			EmailDeliveryStatus preferencesEmail) {
 		return new MemberResponse(m.getId(), m.getName(), m.getEmail(), m.getVersion(), m.getCreatedAt(),
-				m.getUpdatedAt(), invitationsPaused);
+				m.getUpdatedAt(), invitationsPaused, preferencesEmail);
 	}
 
 }

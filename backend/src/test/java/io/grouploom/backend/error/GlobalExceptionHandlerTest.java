@@ -92,6 +92,16 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void tooManyRequests_returns429ProblemDetailWithCode() throws Exception {
+		mockMvc.perform(get("/test/too-many"))
+			.andExpect(status().isTooManyRequests())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.status").value(429))
+			.andExpect(jsonPath("$.code").value("email.cooldown"))
+			.andExpect(jsonPath("$.detail").value("Slow down."));
+	}
+
+	@Test
 	void unknownSortProperty_returns400ProblemDetail() throws Exception {
 		mockMvc.perform(get("/test/bad-sort"))
 			.andExpect(status().isBadRequest())
@@ -126,6 +136,11 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/conflict")
 		void conflict() {
 			throw new ConflictException("duplicate");
+		}
+
+		@GetMapping("/test/too-many")
+		void tooMany() {
+			throw new TooManyRequestsException("Slow down.", "email.cooldown");
 		}
 
 		@GetMapping("/test/conflict-coded")

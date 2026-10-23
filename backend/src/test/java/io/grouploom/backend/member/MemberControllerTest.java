@@ -37,9 +37,14 @@ import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.config.WebConfig;
+import io.grouploom.backend.email.EmailStatus;
+import io.grouploom.backend.email.dto.BulkEmailResult;
+import io.grouploom.backend.email.dto.EmailDeliveryStatus;
+import io.grouploom.backend.email.dto.EmailQueuedResponse;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
+import io.grouploom.backend.error.TooManyRequestsException;
 import io.grouploom.backend.member.dto.MemberResponse;
 import io.grouploom.backend.member.dto.PreferencesLinkResponse;
 
@@ -66,7 +71,7 @@ class MemberControllerTest {
 	}
 
 	private static MemberResponse response() {
-		return new MemberResponse(ID, "Ana Pérez", "ana@example.com", 0, NOW, NOW, false);
+		return new MemberResponse(ID, "Ana Pérez", "ana@example.com", 0, NOW, NOW, false, null);
 	}
 
 	private static String createJson(String name, String email) {
@@ -392,6 +397,85 @@ class MemberControllerTest {
 		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-link")))
 			.andExpect(status().isNotFound())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+	}
+
+	// --- preferences email ---
+
+	@Test
+	void list_includesPreferencesEmailStatusWhenPresent() throws Exception {
+		MemberResponse withStatus = new MemberResponse(ID, "Ana Pérez", "ana@example.com", 0, NOW, NOW, false,
+				new EmailDeliveryStatus(EmailStatus.SENT, NOW));
+		given(service.list(any(), any(), any())).willReturn(new PageImpl<>(List.of(withStatus), PageRequest.of(0, 20), 1));
+
+		mockMvc.perform(api(get("/api/members")))
+			.andExpect(jsonPath("$.content[0].preferencesEmail.status").value("SENT"))
+			.andExpect(jsonPath("$.content[0].preferencesEmail.at").value("2026-01-01T00:00:00Z"));
+	}
+
+	@Test
+	void list_withoutAnyEmailSent_hasNullPreferencesEmail() throws Exception {
+		given(service.list(any(), any(), any())).willReturn(new PageImpl<>(List.of(response()), PageRequest.of(0, 20), 1));
+
+		mockMvc.perform(api(get("/api/members")))
+			.andExpect(jsonPath("$.content[0].preferencesEmail").value(org.hamcrest.Matchers.nullValue()));
+	}
+
+	@Test
+	void sendPreferencesEmail_returns202WithQueuedAt() throws Exception {
+		given(service.sendPreferencesEmail(any(), eq(ID))).willReturn(new EmailQueuedResponse(NOW));
+
+		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-email")))
+			.andExpect(status().isAccepted())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.queuedAt").value("2026-01-01T00:00:00Z"));
+
+		ArgumentCaptor<CurrentUser> user = ArgumentCaptor.forClass(CurrentUser.class);
+		verify(service).sendPreferencesEmail(user.capture(), eq(ID));
+		assertThat(user.getValue().userId()).isEqualTo(USER_ID);
+		assertThat(user.getValue().groupId()).isEqualTo(GROUP_ID);
+	}
+
+	@Test
+	void sendPreferencesEmail_withoutToken_returns401() throws Exception {
+		mockMvc.perform(post("/api/members/" + ID + "/preferences-email").servletPath("/api"))
+			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void sendPreferencesEmail_withMemberFromAnotherGroup_returns404() throws Exception {
+		given(service.sendPreferencesEmail(any(), eq(ID))).willThrow(new NotFoundException("Member not found."));
+
+		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-email")))
+			.andExpect(status().isNotFound())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+	}
+
+	@Test
+	void sendPreferencesEmail_withinTheCooldown_returns429WithCode() throws Exception {
+		given(service.sendPreferencesEmail(any(), eq(ID)))
+			.willThrow(new TooManyRequestsException("A link was sent a moment ago.", "email.cooldown"));
+
+		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-email")))
+			.andExpect(status().isTooManyRequests())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.code").value("email.cooldown"));
+	}
+
+	@Test
+	void sendPreferencesEmailToAll_returns202WithCounts() throws Exception {
+		given(service.sendPreferencesEmailToAll(any())).willReturn(new BulkEmailResult(22, 2));
+
+		mockMvc.perform(api(post("/api/members/preferences-email")))
+			.andExpect(status().isAccepted())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.queued").value(22))
+			.andExpect(jsonPath("$.skipped").value(2));
+	}
+
+	@Test
+	void sendPreferencesEmailToAll_withoutToken_returns401() throws Exception {
+		mockMvc.perform(post("/api/members/preferences-email").servletPath("/api"))
+			.andExpect(status().isUnauthorized());
 	}
 
 }

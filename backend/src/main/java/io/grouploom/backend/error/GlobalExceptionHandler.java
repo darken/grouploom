@@ -62,6 +62,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 	}
 
+	@ExceptionHandler(TooManyRequestsException.class)
+	ProblemDetail handleTooManyRequests(TooManyRequestsException ex) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+		problem.setProperty("code", ex.getCode());
+		return problem;
+	}
+
 	@ExceptionHandler(InvalidMemberTokenException.class)
 	ProblemDetail handleInvalidMemberToken(InvalidMemberTokenException ex) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());

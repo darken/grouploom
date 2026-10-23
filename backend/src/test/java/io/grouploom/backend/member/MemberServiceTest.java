@@ -3,6 +3,7 @@ package io.grouploom.backend.member;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -13,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -28,13 +30,21 @@ import org.mockito.quality.Strictness;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.config.TestProperties;
+import io.grouploom.backend.email.EmailKind;
+import io.grouploom.backend.email.EmailOutboxEntry;
+import io.grouploom.backend.email.EmailOutboxService;
+import io.grouploom.backend.email.EmailStatus;
+import io.grouploom.backend.email.dto.EmailDeliveryStatus;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
+import io.grouploom.backend.error.TooManyRequestsException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
 import io.grouploom.backend.member.dto.CreateMemberRequest;
@@ -55,6 +65,7 @@ class MemberServiceTest {
 	@Mock GroupRepository groups;
 	@Mock MemberTokenService memberTokens;
 	@Mock PreferenceService preferences;
+	@Mock EmailOutboxService emailOutbox;
 
 	private final UUID groupId = UUID.randomUUID();
 	private final CurrentUser current = new CurrentUser(UUID.randomUUID(), groupId, Role.ORGANIZER);
@@ -67,7 +78,7 @@ class MemberServiceTest {
 		ReflectionTestUtils.setField(group, "id", groupId);
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		given(repository.saveAndFlush(any(Member.class))).willAnswer(i -> i.getArgument(0));
-		service = new MemberService(repository, groups, memberTokens, preferences,
+		service = new MemberService(repository, groups, memberTokens, preferences, emailOutbox,
 				TestProperties.app("https://app.example.com", Duration.ofDays(60)),
 				Clock.fixed(LATER, ZoneOffset.UTC));
 	}
@@ -246,7 +257,7 @@ class MemberServiceTest {
 
 	@Test
 	void createPreferencesLink_withTrailingSlashInBaseUrl_doesNotDoubleTheSlash() {
-		service = new MemberService(repository, groups, memberTokens, preferences,
+		service = new MemberService(repository, groups, memberTokens, preferences, emailOutbox,
 				TestProperties.app("https://app.example.com/", Duration.ofDays(60)),
 				Clock.fixed(LATER, ZoneOffset.UTC));
 		Member m = existing("Ana", "ana@example.com");
@@ -295,6 +306,119 @@ class MemberServiceTest {
 		assertThat(result).extracting("invitationsPaused").containsExactly(false, true);
 		verify(preferences, times(1)).pausedMemberIds(groupId);
 		verify(preferences, never()).isPaused(any());
+	}
+
+	// --- delivery status ---
+
+	@Test
+	void list_fillsPreferencesEmailWithASingleLookupForThePage() {
+		Member ana = existing("Ana", "ana@example.com");
+		Member bob = existing("Bob", "bob@example.com");
+		PageRequest page = PageRequest.of(0, 20);
+		given(repository.findAllByGroupId(groupId, page)).willReturn(new PageImpl<>(List.of(ana, bob), page, 2));
+		EmailDeliveryStatus sent = new EmailDeliveryStatus(EmailStatus.SENT, NOW);
+		given(emailOutbox.latestPreferencesStatus(groupId, List.of(ana.getId(), bob.getId())))
+			.willReturn(Map.of(bob.getId(), sent));
+
+		var result = service.list(current, null, page).getContent();
+
+		assertThat(result).extracting("preferencesEmail").containsExactly(null, sent);
+		verify(emailOutbox, times(1)).latestPreferencesStatus(any(), any());
+	}
+
+	@Test
+	void get_fillsPreferencesEmail() {
+		Member m = existing("Ana", "ana@example.com");
+		EmailDeliveryStatus pending = new EmailDeliveryStatus(EmailStatus.PENDING, NOW);
+		given(emailOutbox.latestPreferencesStatus(groupId, List.of(m.getId()))).willReturn(Map.of(m.getId(), pending));
+
+		assertThat(service.get(current, m.getId()).preferencesEmail()).isEqualTo(pending);
+	}
+
+	@Test
+	void create_returnsMemberWithoutAnyEmailStatus() {
+		assertThat(service.create(current, new CreateMemberRequest("Ana", "ana@example.com")).preferencesEmail())
+			.isNull();
+	}
+
+	// --- emailing the preferences link ---
+
+	@Test
+	void sendPreferencesEmail_enqueuesForTheMemberOnBehalfOfTheOrganizer() {
+		Member m = existing("Ana", "ana@example.com");
+		EmailOutboxEntry entry = new EmailOutboxEntry(group, m, null, EmailKind.PREFERENCES_LINK, LATER);
+		given(emailOutbox.enqueuePreferencesLink(m, current.userId())).willReturn(entry);
+
+		var response = service.sendPreferencesEmail(current, m.getId());
+
+		assertThat(response.queuedAt()).isEqualTo(LATER);
+		verify(emailOutbox).enqueuePreferencesLink(m, current.userId());
+	}
+
+	@Test
+	void sendPreferencesEmail_withinTheCooldown_throwsTooManyRequestsWithoutEnqueuing() {
+		Member m = existing("Ana", "ana@example.com");
+		given(emailOutbox.isWithinCooldown(m.getId())).willReturn(true);
+
+		assertThatThrownBy(() -> service.sendPreferencesEmail(current, m.getId()))
+			.isInstanceOfSatisfying(TooManyRequestsException.class,
+					e -> assertThat(e.getCode()).isEqualTo("email.cooldown"));
+		verify(emailOutbox, never()).enqueuePreferencesLink(any(), any());
+	}
+
+	@Test
+	void sendPreferencesEmail_withMemberFromAnotherGroup_throwsNotFoundWithoutEnqueuing() {
+		UUID foreignId = UUID.randomUUID();
+		given(repository.findByIdAndGroupId(foreignId, groupId)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.sendPreferencesEmail(current, foreignId))
+			.isInstanceOf(NotFoundException.class);
+		verify(emailOutbox, never()).enqueuePreferencesLink(any(), any());
+	}
+
+	@Test
+	void sendPreferencesEmailToAll_queuesEveryoneExceptMembersInTheCooldown() {
+		Member ana = existing("Ana", "ana@example.com");
+		Member bob = existing("Bob", "bob@example.com");
+		Member cy = existing("Cy", "cy@example.com");
+		given(repository.findAllByGroupId(eq(groupId), any(Pageable.class)))
+			.willReturn(new PageImpl<>(List.of(ana, bob, cy), PageRequest.of(0, 500), 3));
+		given(emailOutbox.membersWithinCooldown(List.of(ana.getId(), bob.getId(), cy.getId())))
+			.willReturn(Set.of(bob.getId()));
+		given(emailOutbox.enqueuePreferencesLinks(List.of(ana, cy), current.userId())).willReturn(2);
+
+		var result = service.sendPreferencesEmailToAll(current);
+
+		assertThat(result.queued()).isEqualTo(2);
+		assertThat(result.skipped()).isEqualTo(1);
+	}
+
+	@Test
+	void sendPreferencesEmailToAll_walksTheGroupInPagesOf500() {
+		Member ana = existing("Ana", "ana@example.com");
+		Member bob = existing("Bob", "bob@example.com");
+		given(repository.findAllByGroupId(groupId, PageRequest.of(0, 500, Sort.by("id"))))
+			.willReturn(new PageImpl<>(List.of(ana), PageRequest.of(0, 500, Sort.by("id")), 501));
+		given(repository.findAllByGroupId(groupId, PageRequest.of(1, 500, Sort.by("id"))))
+			.willReturn(new PageImpl<>(List.of(bob), PageRequest.of(1, 500, Sort.by("id")), 501));
+		given(emailOutbox.enqueuePreferencesLinks(any(), eq(current.userId()))).willReturn(1);
+
+		var result = service.sendPreferencesEmailToAll(current);
+
+		assertThat(result.queued()).isEqualTo(2);
+		assertThat(result.skipped()).isZero();
+		verify(emailOutbox, times(2)).membersWithinCooldown(any());
+	}
+
+	@Test
+	void sendPreferencesEmailToAll_withNoMembers_queuesNothing() {
+		given(repository.findAllByGroupId(eq(groupId), any(Pageable.class)))
+			.willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 500), 0));
+
+		var result = service.sendPreferencesEmailToAll(current);
+
+		assertThat(result.queued()).isZero();
+		assertThat(result.skipped()).isZero();
 	}
 
 	// --- get / delete / tenancy ---
