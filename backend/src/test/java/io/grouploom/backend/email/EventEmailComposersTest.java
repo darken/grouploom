@@ -259,6 +259,27 @@ class EventEmailComposersTest {
 	}
 
 	@Test
+	void compose_invitationWithoutAnAnswer_showsTheReplyBlockOnceAndInsideTheCard() {
+		OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+		assertThat(email.html().split(">Going<", -1)).hasSize(2);
+		assertThat(email.html().split("You can change your answer until the event starts.", -1)).hasSize(2);
+		assertThat(email.html().indexOf(">Going<")).isLessThan(email.html().indexOf("You're getting this because"));
+	}
+
+	@Test
+	void compose_reminderForAMemberWhoIsGoing_showsTheStatusOnce() {
+		Event e = event("Practice", null, null);
+		answered(e, AttendanceResponse.GOING);
+
+		OutgoingEmail email = reminder(e, Instant.parse("2026-11-06T09:00:00Z"));
+
+		assertThat(email.html().split("You're going", -1)).hasSize(2);
+		assertThat(email.html().split("Change answer", -1)).hasSize(2);
+		assertThat(email.html().indexOf("You're going")).isLessThan(email.html().indexOf("You're getting this because"));
+	}
+
+	@Test
 	void compose_reminderWithoutAnAnswer_hasBothReplyLinksInHtmlAndText() {
 		OutgoingEmail email = reminder(event("Practice", null, null), Instant.parse("2026-11-06T09:00:00Z"));
 
