@@ -62,7 +62,7 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxEntry, U
 
 	/**
 	 * Queues one email per member who should hear about an event of this type: not paused, and not opted out of
-	 * the type. One set-based statement, so a large group needs no per-member loop. The unique index on
+	 * the type. Reminders also skip members who answered that they can't go. One set-based statement, so a large group needs no per-member loop. The unique index on
 	 * (notification_id, member_id) makes a repeat a no-op. Returns how many rows were inserted.
 	 */
 	@Modifying
@@ -78,6 +78,9 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxEntry, U
 			  AND p.invitations_paused_at IS NULL
 			  AND NOT EXISTS (SELECT 1 FROM member_event_type_opt_outs o
 			                  WHERE o.member_id = m.id AND o.event_type_id = :eventTypeId)
+			  AND (CAST(:kind AS text) <> 'EVENT_REMINDER' OR NOT EXISTS (
+			           SELECT 1 FROM attendances a
+			           WHERE a.event_id = :eventId AND a.member_id = m.id AND a.response = 'NOT_GOING'))
 			ON CONFLICT DO NOTHING
 			""")
 	int fanOutInvitation(@Param("notificationId") UUID notificationId, @Param("eventId") UUID eventId,
@@ -112,7 +115,7 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxEntry, U
 			""")
 	List<DeliveryCount> countByNotification(@Param("notificationIds") Collection<UUID> notificationIds);
 
-	/** Members an invitation would reach right now: the same conditions as {@link #fanOutInvitation}. */
+	/** Members a notification of this kind would reach right now: the same conditions as {@link #fanOutInvitation}. */
 	@Query(nativeQuery = true, value = """
 			SELECT count(*) FROM members m
 			LEFT JOIN member_preferences p ON p.member_id = m.id
@@ -120,8 +123,12 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxEntry, U
 			  AND p.invitations_paused_at IS NULL
 			  AND NOT EXISTS (SELECT 1 FROM member_event_type_opt_outs o
 			                  WHERE o.member_id = m.id AND o.event_type_id = :eventTypeId)
+			  AND (CAST(:kind AS text) <> 'EVENT_REMINDER' OR NOT EXISTS (
+			           SELECT 1 FROM attendances a
+			           WHERE a.event_id = :eventId AND a.member_id = m.id AND a.response = 'NOT_GOING'))
 			""")
-	int countEligibleRecipients(@Param("groupId") UUID groupId, @Param("eventTypeId") UUID eventTypeId);
+	int countEligibleRecipients(@Param("groupId") UUID groupId, @Param("eventTypeId") UUID eventTypeId,
+			@Param("eventId") UUID eventId, @Param("kind") String kind);
 
 	@Query(nativeQuery = true, value = "SELECT count(*) FROM members WHERE group_id = :groupId")
 	long countMembers(@Param("groupId") UUID groupId);

@@ -86,8 +86,7 @@ class EmailOutboxFanOutRepositoryTest {
 	}
 
 	private List<UUID> recipients(String kind) {
-		return jdbc.queryForList("select member_id from email_outbox where kind = ? and notification_id = ?", UUID.class,
-				kind, invitation.getId());
+		return jdbc.queryForList("select member_id from email_outbox where kind = ?", UUID.class, kind);
 	}
 
 	@Test
@@ -202,11 +201,74 @@ class EmailOutboxFanOutRepositoryTest {
 		optOut(member(), social);
 		member(groups.save(new Group("Other", NOW)));
 
-		int eligible = outbox.countEligibleRecipients(group.getId(), practice.getId());
+		int eligible = outbox.countEligibleRecipients(group.getId(), practice.getId(), event.getId(), "EVENT_INVITATION");
 
 		assertThat(eligible).isEqualTo(2);
 		assertThat(outbox.countMembers(group.getId())).isEqualTo(4);
 		assertThat(fanOutInvitation()).isEqualTo(eligible);
+	}
+
+	private void answer(Member m, String response) {
+		jdbc.update("insert into attendances (id, group_id, event_id, member_id, response, source, responded_at) "
+				+ "values (gen_random_uuid(), ?, ?, ?, ?, 'MEMBER', now())", group.getId(), event.getId(), m.getId(), response);
+	}
+
+	private int fanOutReminder() {
+		EventNotification reminder = notifications.saveAndFlush(
+				new EventNotification(event, group, NotificationKind.REMINDER, NOW, 60, null, null, NOW));
+		return outbox.fanOutInvitation(reminder.getId(), event.getId(), group.getId(), practice.getId(), "EVENT_REMINDER",
+				null, NOW);
+	}
+
+	@Test
+	void fanOutInvitation_asReminder_skipsMembersWhoCannotGoButKeepsGoingAndNoReply() {
+		Member going = member();
+		Member cannotGo = member();
+		Member silent = member();
+		answer(going, "GOING");
+		answer(cannotGo, "NOT_GOING");
+
+		int inserted = fanOutReminder();
+
+		assertThat(inserted).isEqualTo(2);
+		assertThat(recipients("EVENT_REMINDER")).containsExactlyInAnyOrder(going.getId(), silent.getId());
+	}
+
+	@Test
+	void fanOutInvitation_asReminder_ignoresAnswersForOtherEvents() {
+		Member m = member();
+		Instant start = NOW.plus(Duration.ofDays(9));
+		Event other = events.saveAndFlush(new Event(group, practice, "Other", null, null, start, start.plusSeconds(60), "UTC", NOW));
+		jdbc.update("insert into attendances (id, group_id, event_id, member_id, response, source, responded_at) "
+				+ "values (gen_random_uuid(), ?, ?, ?, 'NOT_GOING', 'MEMBER', now())", group.getId(), other.getId(), m.getId());
+
+		assertThat(fanOutReminder()).isEqualTo(1);
+	}
+
+	@Test
+	void fanOutInvitation_asInvitation_ignoresAnswers() {
+		Member cannotGo = member();
+		member();
+		answer(cannotGo, "NOT_GOING");
+
+		assertThat(fanOutInvitation()).isEqualTo(2);
+		assertThat(recipients("EVENT_INVITATION")).contains(cannotGo.getId());
+	}
+
+	@Test
+	void countEligibleRecipients_forEachKind_matchesWhatTheFanOutWouldInsert() {
+		answer(member(), "NOT_GOING");
+		answer(member(), "GOING");
+		member();
+		pause(member());
+
+		int forReminder = outbox.countEligibleRecipients(group.getId(), practice.getId(), event.getId(), "EVENT_REMINDER");
+		int forInvitation = outbox.countEligibleRecipients(group.getId(), practice.getId(), event.getId(), "EVENT_INVITATION");
+
+		assertThat(forInvitation).isEqualTo(3);
+		assertThat(forReminder).isEqualTo(2);
+		assertThat(fanOutReminder()).isEqualTo(forReminder);
+		assertThat(fanOutInvitation()).isEqualTo(forInvitation);
 	}
 
 	@Test

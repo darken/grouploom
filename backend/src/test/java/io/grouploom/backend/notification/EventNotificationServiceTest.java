@@ -339,19 +339,36 @@ class EventNotificationServiceTest {
 	}
 
 	@Test
-	void audience_returnsEligibleAndTotalMembers() {
-		given(outbox.countEligibleRecipients(groupId, type.getId())).willReturn(18);
+	void audience_forAnInvitation_returnsEligibleAndTotalMembers() {
+		given(outbox.countEligibleRecipients(groupId, type.getId(), event.getId(), "EVENT_INVITATION")).willReturn(18);
 		given(outbox.countMembers(groupId)).willReturn(24L);
 
-		var audience = service.audience(current, event.getId());
+		var audience = service.audience(current, event.getId(), NotificationKind.INVITATION);
 
 		assertThat(audience.eligible()).isEqualTo(18);
 		assertThat(audience.total()).isEqualTo(24);
 	}
 
 	@Test
+	void audience_forAReminder_countsWithoutMembersWhoCannotGo() {
+		given(outbox.countEligibleRecipients(groupId, type.getId(), event.getId(), "EVENT_REMINDER")).willReturn(15);
+		given(outbox.countMembers(groupId)).willReturn(24L);
+
+		var audience = service.audience(current, event.getId(), NotificationKind.REMINDER);
+
+		assertThat(audience.eligible()).isEqualTo(15);
+		assertThat(audience.total()).isEqualTo(24);
+	}
+
+	@Test
+	void audience_forACancellation_throwsInvalidKind() {
+		assertThatThrownBy(() -> service.audience(current, event.getId(), NotificationKind.CANCELLATION))
+			.isInstanceOfSatisfying(BadRequestException.class, e -> assertThat(e.getCode()).isEqualTo("notification.invalid-kind"));
+	}
+
+	@Test
 	void audience_forAnotherGroupsEvent_throwsNotFound() {
-		assertThatThrownBy(() -> service.audience(current, UUID.randomUUID())).isInstanceOf(NotFoundException.class);
+		assertThatThrownBy(() -> service.audience(current, UUID.randomUUID(), NotificationKind.INVITATION)).isInstanceOf(NotFoundException.class);
 	}
 
 	// --- onEventRescheduled ---
