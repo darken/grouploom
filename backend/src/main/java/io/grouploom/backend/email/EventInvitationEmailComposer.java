@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 
+import io.grouploom.backend.attendance.AttendanceRepository;
 import io.grouploom.backend.config.AppProperties;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.membertoken.MemberTokenService;
@@ -15,8 +16,8 @@ import io.grouploom.backend.membertoken.MemberTokenService;
 public class EventInvitationEmailComposer extends EventEmailComposerSupport {
 
 	public EventInvitationEmailComposer(@Qualifier("mailTemplateEngine") TemplateEngine templates,
-			AppProperties properties, MemberTokenService memberTokens) {
-		super(templates, properties, memberTokens);
+			AppProperties properties, MemberTokenService memberTokens, AttendanceRepository attendances) {
+		super(templates, properties, memberTokens, attendances);
 	}
 
 	@Override
@@ -32,11 +33,11 @@ public class EventInvitationEmailComposer extends EventEmailComposerSupport {
 			String day = EventTimeText.dayWord(event.getStartsAt(), entry.getNotification().getSendAt(), zone);
 			String subject = "Reminder: " + event.getTitle() + " is " + day + " at "
 					+ EventTimeText.clock(event.getStartsAt(), zone);
-			return render(entry, subject, "event-reminder", "Reminder", false);
+			return render(entry, subject, "event-reminder", "Reminder", false, true);
 		}
 		String subject = event.getTitle() + " · " + EventTimeText.date(event.getStartsAt(), zone) + ", "
 				+ EventTimeText.clock(event.getStartsAt(), zone);
-		return render(entry, subject, "event-invitation", "You're invited", false);
+		return render(entry, subject, "event-invitation", "You're invited", false, true);
 	}
 
 }

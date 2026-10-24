@@ -7,6 +7,9 @@ import java.util.Map;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import io.grouploom.backend.attendance.AttendanceLinks;
+import io.grouploom.backend.attendance.AttendanceRepository;
+import io.grouploom.backend.attendance.AttendanceResponse;
 import io.grouploom.backend.config.AppProperties;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventTypeColor;
@@ -25,15 +28,22 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 	private final TemplateEngine templates;
 	private final AppProperties properties;
 	private final MemberTokenService memberTokens;
+	private final AttendanceRepository attendances;
 
-	EventEmailComposerSupport(TemplateEngine templates, AppProperties properties, MemberTokenService memberTokens) {
+	EventEmailComposerSupport(TemplateEngine templates, AppProperties properties, MemberTokenService memberTokens,
+			AttendanceRepository attendances) {
 		this.templates = templates;
 		this.properties = properties;
 		this.memberTokens = memberTokens;
+		this.attendances = attendances;
 	}
 
-	/** {@code template} is the base name, e.g. {@code event-invitation} (rendered as .txt and .html). */
-	OutgoingEmail render(EmailOutboxEntry entry, String subject, String template, String statusLabel, boolean cancelled) {
+	/**
+	 * {@code template} is the base name, e.g. {@code event-invitation} (rendered as .txt and .html).
+	 * {@code includeAttendance} adds the reply block, which depends on the member's answer at send time.
+	 */
+	OutgoingEmail render(EmailOutboxEntry entry, String subject, String template, String statusLabel, boolean cancelled,
+			boolean includeAttendance) {
 		Event event = entry.getEvent();
 		String note = entry.getNotification() == null ? null : blankToNull(entry.getNotification().getMessage());
 		IssuedToken preferences = memberTokens.issue(entry.getMember(), MemberTokenPurpose.PREFERENCES);
@@ -54,6 +64,10 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 		context.setVariable("note", note);
 		context.setVariable("preferencesLink", PreferencesLinks.url(properties.publicBaseUrl(), preferences.raw()));
 
+		if (includeAttendance) {
+			addAttendance(context, entry, event);
+		}
+
 		Map<String, String> headers = new HashMap<>();
 		headers.put("List-Unsubscribe", "<" + UnsubscribeLinks.url(properties.publicBaseUrl(), unsubscribe.raw()) + ">");
 		headers.put("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
@@ -63,6 +77,19 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 		return new OutgoingEmail(entry.getMember().getEmail(), groupName + " via GroupLoom",
 				requestedBy == null ? null : requestedBy.getEmail(), PreferencesLinkEmailComposer.headerSafe(subject),
 				templates.process(template + ".txt", context), templates.process(template + ".html", context), headers);
+	}
+
+	/** One token per email, bound to the event; members who already answered get a link to change it instead. */
+	private void addAttendance(Context context, EmailOutboxEntry entry, Event event) {
+		IssuedToken token = memberTokens.issue(entry.getMember(), MemberTokenPurpose.ATTENDANCE, event);
+		String base = properties.publicBaseUrl();
+		AttendanceResponse current = attendances.findByEventIdAndMemberId(event.getId(), entry.getMember().getId())
+			.map(a -> a.getResponse())
+			.orElse(null);
+		context.setVariable("currentResponse", current == null ? null : current.name());
+		context.setVariable("goingLink", AttendanceLinks.url(base, token.raw(), AttendanceResponse.GOING));
+		context.setVariable("notGoingLink", AttendanceLinks.url(base, token.raw(), AttendanceResponse.NOT_GOING));
+		context.setVariable("changeLink", AttendanceLinks.url(base, token.raw(), null));
 	}
 
 	private static String blankToNull(String value) {

@@ -13,6 +13,21 @@ You're invited
 [[${note}]]
 [/]
 
+[# th:if="${currentResponse == null}"]
+Going: [(${goingLink})]
+Can't go: [(${notGoingLink})]
+
+You can change your answer until the event starts.
+[/]
+[# th:if="${currentResponse == 'GOING'}"]
+You're going.
+Change answer: [(${changeLink})]
+[/]
+[# th:if="${currentResponse == 'NOT_GOING'}"]
+You said you can't go.
+Change answer: [(${changeLink})]
+[/]
+
 --
 You're getting this because you're a member of [[${groupName}]].
 Choose which events you hear about:
