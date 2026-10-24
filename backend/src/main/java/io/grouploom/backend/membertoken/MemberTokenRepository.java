@@ -12,7 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface MemberTokenRepository extends JpaRepository<MemberToken, UUID> {
 
-	@EntityGraph(attributePaths = { "member", "member.group" })
+	// Attendance tokens carry their event; the reply page shows it with its type, so load both in this one query.
+	@EntityGraph(attributePaths = { "member", "member.group", "event", "event.eventType" })
 	Optional<MemberToken> findByTokenHash(String tokenHash);
 
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
