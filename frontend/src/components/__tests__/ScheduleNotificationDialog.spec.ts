@@ -110,6 +110,12 @@ describe('ScheduleNotificationDialog', () => {
     )
   })
 
+  it('uses the singular "member" when the group has one member', () => {
+    const wrapper = mountDialog({ audience: { eligible: 1, total: 1 } })
+
+    expect(wrapper.find('[data-audience]').text()).toBe('Will be sent to 1 of 1 member.')
+  })
+
   it('does not explain exclusions when everyone is eligible', () => {
     const wrapper = mountDialog({ audience: { eligible: 24, total: 24 } })
 

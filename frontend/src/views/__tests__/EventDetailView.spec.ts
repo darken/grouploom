@@ -303,6 +303,16 @@ describe('EventDetailView', () => {
     expect(wrapper.findAll('[role=menuitem]').map((m) => m.text())).toEqual(['Delete'])
   })
 
+  it('strikes the title through for a cancelled event only', async () => {
+    serve(found(CANCELLED))
+    const { wrapper } = await mountView()
+    expect(wrapper.find('h1').classes()).toContain('line-through')
+
+    serve(found())
+    const { wrapper: normal } = await mountView()
+    expect(normal.find('h1').classes()).not.toContain('line-through')
+  })
+
   it('shows the banner without a message when there is none', async () => {
     serve(found({ cancelledAt: '2099-10-20T08:00:00Z' }))
 

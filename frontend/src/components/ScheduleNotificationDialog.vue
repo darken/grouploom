@@ -73,7 +73,7 @@ const audienceText = computed(() => {
   if (a.eligible === 0) return { warning: true, text: 'No members will receive this right now.' }
   const left = a.total - a.eligible
   const why = left > 0 ? ` ${left} ${left === 1 ? 'has' : 'have'} paused invitations or turned off ${props.event.eventType.name}.` : ''
-  return { warning: false, text: `Will be sent to ${a.eligible} of ${a.total} members.${why}` }
+  return { warning: false, text: `Will be sent to ${a.eligible} of ${a.total} ${a.total === 1 ? 'member' : 'members'}.${why}` }
 })
 
 const submitLabel = computed(() => (choice.value === 'now' ? 'Send now' : 'Schedule'))

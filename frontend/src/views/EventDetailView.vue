@@ -226,7 +226,7 @@ async function unschedule(notificationId: string) {
 
     <article v-else-if="event" class="mt-4">
       <div class="flex items-start justify-between gap-4">
-        <h1 class="min-w-0 text-4xl font-semibold tracking-tight break-words sm:text-5xl">{{ event.title }}</h1>
+        <h1 class="min-w-0 text-4xl font-semibold tracking-tight break-words sm:text-5xl" :class="cancelled && 'line-through decoration-2'">{{ event.title }}</h1>
         <div class="flex shrink-0 items-center gap-2 pt-1">
           <BaseButton v-if="!cancelled" variant="secondary" @click="openForm">Edit</BaseButton>
           <div ref="menu" class="relative">
