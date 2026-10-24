@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import type { Audience, ScheduleNotificationInput } from '@/stores/eventNotifications'
+import type { Audience, AudienceKind, ScheduleNotificationInput } from '@/stores/eventNotifications'
 import type { EventItem } from '@/stores/events'
 import { fromWallClockMs, wallClockMs, type DateTimeParts } from '@/ui/localDateTime'
 import { describeOffset } from '@/ui/notificationText'
@@ -24,14 +24,19 @@ const props = defineProps<{
   /** The current moment; injectable so "Too late" is testable. */
   now?: Date
 }>()
-const emit = defineEmits<{ submit: [input: ScheduleNotificationInput]; close: [] }>()
+const emit = defineEmits<{
+  submit: [input: ScheduleNotificationInput]
+  close: []
+  /** The kind changed, so the parent should load that kind's audience. */
+  'kind-change': [kind: AudienceKind]
+}>()
 
 const PAST_ALLOWANCE_MS = 60_000
 const OFFSETS = [120, 1_440, 10_080]
 
 type Choice = 'now' | 'custom' | `${number}`
 
-const kind = ref<ScheduleNotificationInput['kind']>('INVITATION')
+const kind = ref<AudienceKind>('INVITATION')
 const choice = ref<Choice>('now')
 const message = ref('')
 const custom = ref<DateTimeParts>({ startDate: '', startTime: '', endDate: '', endTime: '' })
@@ -54,6 +59,7 @@ function reset() {
 }
 
 watch(() => props.open, (open) => open && reset(), { immediate: true })
+watch(kind, (next) => emit('kind-change', next))
 
 const options = computed(() => {
   const now = (props.now ?? new Date()).getTime()
@@ -73,7 +79,11 @@ const audienceText = computed(() => {
   if (a.eligible === 0) return { warning: true, text: 'No members will receive this right now.' }
   const left = a.total - a.eligible
   const why = left > 0 ? ` ${left} ${left === 1 ? 'has' : 'have'} paused invitations or turned off ${props.event.eventType.name}.` : ''
-  return { warning: false, text: `Will be sent to ${a.eligible} of ${a.total} ${a.total === 1 ? 'member' : 'members'}.${why}` }
+  const skipped = kind.value === 'REMINDER' ? " Members who said they can't go are skipped." : ''
+  return {
+    warning: false,
+    text: `Will be sent to ${a.eligible} of ${a.total} ${a.total === 1 ? 'member' : 'members'}.${why}${skipped}`,
+  }
 })
 
 const submitLabel = computed(() => (choice.value === 'now' ? 'Send now' : 'Schedule'))

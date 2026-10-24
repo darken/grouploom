@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { useMemberAttendanceStore } from '@/stores/memberAttendance'
 import { useMemberPreferencesStore } from '@/stores/memberPreferences'
 import MemberLayout from '../MemberLayout.vue'
 
@@ -27,6 +28,30 @@ describe('MemberLayout', () => {
       groupName: 'Chess Club',
       invitationsPaused: false,
       eventTypes: [],
+    }
+
+    const wrapper = mountLayout()
+
+    expect(wrapper.get('[data-wordmark]').text()).toBe('Chess Club')
+    expect(wrapper.get('footer').text()).toBe('Sent by Chess Club via GroupLoom')
+  })
+
+  it('shows the group name on the reply page too', () => {
+    useMemberAttendanceStore().data = {
+      groupName: 'Chess Club',
+      memberName: 'Ana',
+      open: true,
+      event: {
+        title: 'Practice',
+        start: '2026-11-07T09:00:00Z',
+        end: '2026-11-07T11:00:00Z',
+        localStart: '2026-11-07T10:00:00',
+        localEnd: '2026-11-07T12:00:00',
+        timeZone: 'UTC',
+        typeName: 'Practice',
+        typeColor: 'green',
+        cancelled: false,
+      },
     }
 
     const wrapper = mountLayout()

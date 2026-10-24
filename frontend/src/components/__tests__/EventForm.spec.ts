@@ -22,6 +22,7 @@ const existing: EventItem = {
   timeZone: 'Europe/Madrid',
   eventType: { id: 't1', name: 'Practice', color: 'green', archived: false },
   version: 4,
+  goingCount: 0,
   createdAt: '2020-01-01T00:00:00Z',
   updatedAt: '2020-01-01T00:00:00Z',
 }

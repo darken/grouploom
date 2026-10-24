@@ -84,6 +84,18 @@ describe('router guard for public routes', () => {
     expect(useAuthStore().status).toBe('unknown')
   })
 
+  it('opens the member reply page when signed out, keeping the link fragment', async () => {
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/m/attend#t=abc&r=going')
+
+    expect(router.currentRoute.value.name).toBe('member-attendance')
+    expect(router.currentRoute.value.hash).toBe('#t=abc&r=going')
+    expect(router.currentRoute.value.meta).toMatchObject({ public: true, layout: 'member', title: 'Reply' })
+    expect(post).not.toHaveBeenCalled()
+    expect(useAuthStore().status).toBe('unknown')
+  })
+
   it('does not use the session of a signed-in organizer on a public route', async () => {
     post.mockResolvedValue({ data: me, response: new Response() })
     await useAuthStore().restore()

@@ -62,7 +62,8 @@ function inProgress(event: EventItem): boolean {
                 </span>
               </span>
               <span class="block truncate text-sm text-[var(--app-muted)]">
-                {{ event.eventType.name }}<template v-if="event.location"> · {{ event.location }}</template>
+                {{ event.eventType.name }}<template v-if="event.location"> · {{ event.location }}</template
+                ><template v-if="event.goingCount > 0"> · <span data-going>{{ event.goingCount }} going</span></template>
               </span>
             </span>
           </RouterLink>

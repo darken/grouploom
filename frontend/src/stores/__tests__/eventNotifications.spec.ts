@@ -102,10 +102,38 @@ describe('eventNotifications store', () => {
     get.mockResolvedValue(ok({ eligible: 18, total: 24 }))
     const store = useEventNotificationsStore()
 
-    await store.fetchAudience('e1')
+    await store.fetchAudience('e1', 'INVITATION')
 
-    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications/audience', { params: { path: { eventId: 'e1' } } })
+    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications/audience', {
+      params: { path: { eventId: 'e1' }, query: { kind: 'INVITATION' } },
+    })
     expect(store.audience).toEqual({ eligible: 18, total: 24 })
+  })
+
+  it('fetchAudience asks for the reminder audience, which leaves out members who cannot go', async () => {
+    get.mockResolvedValue(ok({ eligible: 15, total: 24 }))
+    const store = useEventNotificationsStore()
+
+    await store.fetchAudience('e1', 'REMINDER')
+
+    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications/audience', {
+      params: { path: { eventId: 'e1' }, query: { kind: 'REMINDER' } },
+    })
+    expect(store.audience).toEqual({ eligible: 15, total: 24 })
+  })
+
+  it('fetchAudience ignores an answer for a kind that is no longer selected', async () => {
+    let finishInvitation!: (value: unknown) => void
+    get.mockReturnValueOnce(new Promise((r) => (finishInvitation = r)))
+    get.mockResolvedValueOnce(ok({ eligible: 15, total: 24 }))
+    const store = useEventNotificationsStore()
+
+    const first = store.fetchAudience('e1', 'INVITATION')
+    await store.fetchAudience('e1', 'REMINDER')
+    finishInvitation(ok({ eligible: 18, total: 24 }))
+    await first
+
+    expect(store.audience).toEqual({ eligible: 15, total: 24 })
   })
 
   it('schedule posts the input, inserts the result and keeps the list sorted', async () => {

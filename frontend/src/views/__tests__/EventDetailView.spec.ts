@@ -39,6 +39,7 @@ function event(overrides: object = {}) {
     timeZone: 'Europe/Madrid',
     eventType: { id: 't1', name: 'Practice', color: 'green', archived: false },
     version: 3,
+    goingCount: 0,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -51,6 +52,13 @@ function typePage() {
 }
 
 let notificationItems: object[] = []
+let attendanceSummary = { going: 12, notGoing: 3, noReply: 9, members: 24 }
+let attendanceRows: object[] = []
+let attendanceTotal = 0
+
+function attendanceRow(id: string, name: string, extra: object = {}) {
+  return { member: { id, name, email: `${name.toLowerCase()}@example.com` }, ...extra }
+}
 
 function notification(overrides: object = {}) {
   return {
@@ -72,6 +80,11 @@ function serve(result: () => unknown) {
     if (path === '/events/{eventId}/notifications') return { data: notificationItems, response: new Response() }
     if (path === '/events/{eventId}/notifications/audience') {
       return { data: { eligible: 18, total: 24 }, response: new Response() }
+    }
+    if (path === '/events/{eventId}/attendance/summary') return { data: attendanceSummary, response: new Response() }
+    if (path === '/events/{eventId}/attendance') {
+      const page = { number: 0, size: 50, totalElements: attendanceTotal || attendanceRows.length, totalPages: 1 }
+      return { data: { content: attendanceRows, page }, response: new Response() }
     }
     return result()
   })
@@ -107,6 +120,9 @@ describe('EventDetailView', () => {
   beforeEach(() => {
     for (const m of [get, post, put, del]) m.mockReset()
     notificationItems = []
+    attendanceSummary = { going: 12, notGoing: 3, noReply: 9, members: 24 }
+    attendanceRows = []
+    attendanceTotal = 0
     useToast().dismiss()
     document.body.innerHTML = ''
   })
@@ -177,7 +193,8 @@ describe('EventDetailView', () => {
     let resolve!: (v: unknown) => void
     get.mockImplementation(async (path: string) => {
       if (path === '/event-types') return typePage()
-      if (path.startsWith('/events/{eventId}')) return { data: [], response: new Response() }
+      if (path.startsWith('/events/{eventId}/notifications')) return { data: [], response: new Response() }
+      if (path.startsWith('/events/{eventId}/attendance')) return new Promise(() => undefined)
       return new Promise((r) => (resolve = r))
     })
     const { wrapper } = await mountView()
@@ -457,7 +474,9 @@ describe('EventDetailView', () => {
     await button(wrapper, 'Schedule invitation')!.trigger('click')
     await flushPromises()
     const dialog = dialogOpen(wrapper)[0]!
-    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications/audience', { params: { path: { eventId: 'e1' } } })
+    expect(get).toHaveBeenCalledWith('/events/{eventId}/notifications/audience', {
+      params: { path: { eventId: 'e1' }, query: { kind: 'INVITATION' } },
+    })
     expect(dialog.find('[data-audience]').text()).toContain('Will be sent to 18 of 24 members.')
     await dialog.findAll('button').find((b) => b.text() === 'Send now')!.trigger('click')
     await flushPromises()
@@ -520,5 +539,199 @@ describe('EventDetailView', () => {
     })
     expect(wrapper.find('[data-notifications] li').exists()).toBe(false)
     expect(wrapper.find('[aria-live=polite]').text()).toContain('Unscheduled')
+  })
+
+  describe('attendance', () => {
+    const section = (w: Wrapper) => w.get('[data-attendance]')
+    const last = <T,>(items: T[]) => items[items.length - 1]!
+    const rowsCalls = () => get.mock.calls.filter(([path]) => path === '/events/{eventId}/attendance')
+
+    beforeEach(() => {
+      attendanceRows = [
+        attendanceRow('m1', 'Ana', { response: 'GOING', source: 'MEMBER', respondedAt: '2026-11-01T10:00:00Z' }),
+        attendanceRow('m2', 'Bob'),
+      ]
+    })
+
+    it('shows an Attendance section above Notifications, with the counts and the members', async () => {
+      serve(found())
+
+      const { wrapper } = await mountView()
+
+      const sections = wrapper.findAll('section[data-attendance], section[data-notifications]').map((s) => Object.keys(s.attributes()).find((a) => a.startsWith('data-')))
+      expect(sections).toEqual(['data-attendance', 'data-notifications'])
+      expect(section(wrapper).get('h2').text()).toBe('Attendance')
+      expect(section(wrapper).text().replace(/\s+/g, ' ')).toContain("12 Going")
+      expect(section(wrapper).text().replace(/\s+/g, ' ')).toContain("3 Can't go")
+      expect(section(wrapper).text().replace(/\s+/g, ' ')).toContain('9 No reply')
+      expect(section(wrapper).findAll('li').map((li) => li.text())).toEqual([
+        expect.stringContaining('Ana'),
+        expect.stringContaining('Bob'),
+      ])
+      expect(get).toHaveBeenCalledWith('/events/{eventId}/attendance/summary', { params: { path: { eventId: 'e1' } } })
+      expect(get).toHaveBeenCalledWith('/events/{eventId}/attendance', {
+        params: { path: { eventId: 'e1' }, query: { filter: 'ALL', page: 0, size: 50 } },
+      })
+    })
+
+    it('offers All, Going, Can\'t go and No reply as a segmented filter, starting at All', async () => {
+      serve(found())
+
+      const { wrapper } = await mountView()
+
+      const options = section(wrapper).findAll('[role=radiogroup] [role=radio]')
+      expect(options.map((o) => o.text())).toEqual(['All', 'Going', "Can't go", 'No reply'])
+      expect(options[0]!.attributes('aria-checked')).toBe('true')
+    })
+
+    it('keeps the filter in the URL and filters the list', async () => {
+      serve(found())
+      const { wrapper, router } = await mountView('/events/e1?when=past&page=2')
+
+      await section(wrapper).findAll('[role=radio]')[1]!.trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.query).toEqual({ when: 'past', page: '2', attendance: 'going' })
+      expect(last(rowsCalls())[1].params.query).toEqual({ filter: 'GOING', page: 0, size: 50 })
+
+      await section(wrapper).findAll('[role=radio]')[2]!.trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.query.attendance).toBe('not-going')
+      await section(wrapper).findAll('[role=radio]')[3]!.trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.query.attendance).toBe('no-reply')
+      await section(wrapper).findAll('[role=radio]')[0]!.trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.query).toEqual({ when: 'past', page: '2' })
+    })
+
+    it('restores the filter from the URL', async () => {
+      serve(found())
+
+      const { wrapper } = await mountView('/events/e1?attendance=no-reply')
+
+      expect(last(rowsCalls())[1].params.query.filter).toBe('NO_REPLY')
+      expect(section(wrapper).findAll('[role=radio]')[3]!.attributes('aria-checked')).toBe('true')
+    })
+
+    it('ignores an unknown filter in the URL', async () => {
+      serve(found())
+
+      await mountView('/events/e1?attendance=maybe')
+
+      expect(last(rowsCalls())[1].params.query.filter).toBe('ALL')
+    })
+
+    it('does not carry the attendance filter into the back link to the events list', async () => {
+      serve(found())
+
+      const { wrapper } = await mountView('/events/e1?when=past&attendance=going')
+
+      expect(wrapper.get('a[data-back]').attributes('href')).toBe('/events?when=past')
+    })
+
+    it('filters when a figure in the summary is tapped', async () => {
+      serve(found())
+      const { wrapper, router } = await mountView('/events/e1')
+
+      await section(wrapper).findAll('button').find((b) => b.text().includes('No reply'))!.trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.query.attendance).toBe('no-reply')
+    })
+
+    it('pages through a long list', async () => {
+      serve(found())
+      attendanceTotal = 120
+      const { wrapper } = await mountView()
+
+      await section(wrapper).findAll('button').find((b) => b.text() === 'Next')!.trigger('click')
+      await flushPromises()
+
+      expect(last(rowsCalls())[1].params.query).toEqual({ filter: 'ALL', page: 1, size: 50 })
+    })
+
+    it('invites the organizer to add members when the group has none', async () => {
+      attendanceSummary = { going: 0, notGoing: 0, noReply: 0, members: 0 }
+      attendanceRows = []
+      serve(found())
+
+      const { wrapper } = await mountView()
+
+      expect(section(wrapper).text()).toContain("Add members to track who's coming.")
+      expect(section(wrapper).find('a[href="/members"]').exists()).toBe(true)
+    })
+
+    it('says no one is here when a filter has no matches', async () => {
+      attendanceRows = []
+      serve(found())
+
+      const { wrapper } = await mountView('/events/e1?attendance=going')
+
+      expect(section(wrapper).text()).toContain('No one here yet.')
+      expect(section(wrapper).text()).not.toContain('Add members')
+    })
+
+    it('marks a member as going from the row menu', async () => {
+      serve(found())
+      put.mockResolvedValue({ data: attendanceRow('m2', 'Bob', { response: 'GOING', source: 'ORGANIZER', respondedAt: '2026-11-01T11:00:00Z' }), response: new Response() })
+      const { wrapper } = await mountView()
+
+      await section(wrapper).get('button[aria-label="Actions for Bob"]').trigger('click')
+      await section(wrapper).findAll('[role=menuitem]')[0]!.trigger('click')
+      await flushPromises()
+
+      expect(put).toHaveBeenCalledWith('/events/{eventId}/attendance/{memberId}', {
+        params: { path: { eventId: 'e1', memberId: 'm2' } },
+        body: { response: 'GOING' },
+      })
+    })
+
+    it('clears a member\'s answer from the row menu', async () => {
+      serve(found())
+      del.mockResolvedValue({ response: new Response(null, { status: 204 }) })
+      const { wrapper } = await mountView()
+
+      await section(wrapper).get('button[aria-label="Actions for Ana"]').trigger('click')
+      await last(section(wrapper).findAll('[role=menuitem]')).trigger('click')
+      await flushPromises()
+
+      expect(del).toHaveBeenCalledWith('/events/{eventId}/attendance/{memberId}', {
+        params: { path: { eventId: 'e1', memberId: 'm1' } },
+      })
+    })
+
+    it('is read-only for a cancelled event', async () => {
+      serve(found(CANCELLED))
+
+      const { wrapper } = await mountView()
+
+      expect(section(wrapper).findAll('li')).toHaveLength(2)
+      expect(section(wrapper).find('button[aria-label^="Actions for"]').exists()).toBe(false)
+    })
+
+    it('still shows the section for an event that has started, where answers can be corrected', async () => {
+      serve(found({ start: '2020-11-02T09:00:00Z', end: '2099-11-02T11:00:00Z' }))
+
+      const { wrapper } = await mountView()
+
+      expect(section(wrapper).find('button[aria-label="Actions for Bob"]').exists()).toBe(true)
+    })
+
+    it('loads the reminder audience when the dialog switches to Reminder', async () => {
+      serve(found())
+      const { wrapper } = await mountView()
+      await button(wrapper, 'Schedule…')!.trigger('click')
+      await flushPromises()
+      const dialog = dialogOpen(wrapper)[0]!
+
+      await dialog.findAll('[role=radiogroup] [role=radio]').find((r) => r.text() === 'Reminder')!.trigger('click')
+      await flushPromises()
+
+      expect(get).toHaveBeenLastCalledWith('/events/{eventId}/notifications/audience', {
+        params: { path: { eventId: 'e1' }, query: { kind: 'REMINDER' } },
+      })
+      expect(dialogOpen(wrapper)[0]!.find('[data-audience]').text()).toContain("Members who said they can't go are skipped.")
+    })
   })
 })

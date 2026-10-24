@@ -59,7 +59,6 @@ public class AttendanceController {
 	@Operation(summary = "List every member's answer",
 			description = "All current members, ordered by name (not sortable), with their answer if any. "
 					+ "`filter` narrows to one answer or to members who haven't replied. Page size is capped at 100.")
-	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemDetail.class)))
 	public PagedModel<AttendanceRowResponse> list(@Parameter(hidden = true) CurrentUser current,
 			@PathVariable UUID eventId, @RequestParam(defaultValue = "ALL") AttendanceFilter filter,
 			@ParameterObject @PageableDefault(size = 50) Pageable pageable) {

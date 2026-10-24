@@ -17,6 +17,7 @@ function event(id: string, overrides: Partial<EventItem> = {}): EventItem {
     timeZone: 'Europe/Madrid',
     eventType: { id: 't1', name: 'Practice', color: 'green', archived: false },
     version: 0,
+    goingCount: 0,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -142,5 +143,15 @@ describe('EventList', () => {
     const { wrapper } = await mountList([event('1', { cancelledAt: '2026-10-20T08:00:00Z' })], new Date('2026-11-02T09:30:00Z'))
 
     expect(wrapper.text()).not.toContain('Now')
+  })
+
+  it('shows how many are going, but only when someone is', async () => {
+    const { wrapper } = await mountList([event('1', { goingCount: 12 }), event('2', { goingCount: 0 })])
+
+    const rows = wrapper.findAll('li')
+    expect(rows[0]!.get('[data-going]').text()).toBe('12 going')
+    expect(rows[0]!.get('[data-going]').classes().join(' ')).not.toMatch(/text-green-/)
+    expect(rows[1]!.find('[data-going]').exists()).toBe(false)
+    expect(rows[1]!.text()).not.toContain('going')
   })
 })

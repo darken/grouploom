@@ -79,6 +79,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
         meta: { title: 'Email preferences', public: true, layout: 'member' },
       },
       {
+        path: '/m/attend',
+        name: 'member-attendance',
+        component: () => import('@/views/MemberAttendanceView.vue'),
+        meta: { title: 'Reply', public: true, layout: 'member' },
+      },
+      {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/views/NotFoundView.vue'),

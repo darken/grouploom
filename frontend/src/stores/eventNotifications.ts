@@ -9,6 +9,8 @@ import { fieldErrorsFrom } from '@/composables/useFieldErrors'
 export type EventNotification = components['schemas']['EventNotificationResponse']
 export type ScheduleNotificationInput = components['schemas']['ScheduleNotificationRequest']
 export type Audience = components['schemas']['AudienceResponse']
+/** Cancellations have no audience preview. */
+export type AudienceKind = Exclude<ScheduleNotificationInput['kind'], 'CANCELLATION'>
 
 export type ScheduleResult =
   | { status: 'ok'; notification: EventNotification }
@@ -55,6 +57,7 @@ export const useEventNotificationsStore = defineStore('eventNotifications', () =
   const fieldErrors = computed<Record<string, string>>(() => fieldErrorsFrom(saveError.value))
 
   let latestList = 0
+  let latestAudience = 0
   let delivered: ReturnType<typeof setTimeout> | undefined
   let removeFocusListener: (() => void) | undefined
 
@@ -81,12 +84,16 @@ export const useEventNotificationsStore = defineStore('eventNotifications', () =
     }
   }
 
-  async function fetchAudience(id: string) {
+  async function fetchAudience(id: string, kind: AudienceKind) {
+    const request = ++latestAudience
     try {
-      audience.value = unwrap(await api.GET('/events/{eventId}/notifications/audience', { params: { path: { eventId: id } } }))
+      const data = unwrap(
+        await api.GET('/events/{eventId}/notifications/audience', { params: { path: { eventId: id }, query: { kind } } }),
+      )
+      if (request === latestAudience) audience.value = data
     } catch {
       // The audience line is a nicety; the dialog works without it.
-      audience.value = null
+      if (request === latestAudience) audience.value = null
     }
   }
 

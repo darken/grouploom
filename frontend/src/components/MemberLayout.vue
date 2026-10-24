@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { useMemberAttendanceStore } from '@/stores/memberAttendance'
 import { useMemberPreferencesStore } from '@/stores/memberPreferences'
 
 // Members arrive from an email: no app header, navigation or sign-up hints, just the group they know.
-const groupName = computed(() => useMemberPreferencesStore().data?.groupName)
+const preferences = useMemberPreferencesStore()
+const attendance = useMemberAttendanceStore()
+const groupName = computed(() => preferences.data?.groupName ?? attendance.data?.groupName)
 </script>
 
 <template>

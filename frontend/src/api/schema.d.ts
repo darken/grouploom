@@ -28,6 +28,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/public/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the event and a member's answer
+         * @description Authorized by the attendance link token, not by a user session. Never records an answer.
+         */
+        get: operations["get_1"];
+        /**
+         * Answer for an event
+         * @description Sets or changes the member's answer until the event starts. Replaces any earlier answer.
+         */
+        put: operations["answer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/members/{id}": {
         parameters: {
             query?: never;
@@ -35,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_1"];
+        get: operations["get_2"];
         put: operations["update_1"];
         post?: never;
         delete: operations["delete"];
@@ -51,10 +75,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_2"];
+        get: operations["get_3"];
         put: operations["update_2"];
         post?: never;
         delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/attendance/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record a member's answer
+         * @description Sets the answer on the member's behalf, until the event is cancelled (also after it starts). A later answer from the member replaces it.
+         */
+        put: operations["set"];
+        post?: never;
+        /**
+         * Clear a member's answer
+         * @description Succeeds when the member has no answer.
+         */
+        delete: operations["clear"];
         options?: never;
         head?: never;
         patch?: never;
@@ -67,7 +115,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_3"];
+        get: operations["get_4"];
         put: operations["update_3"];
         post?: never;
         delete: operations["delete_2"];
@@ -364,10 +412,50 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Preview who an invitation would reach
-         * @description `eligible` counts members who aren't paused and haven't opted out of the event's type. The real recipients are chosen when the notification is sent.
+         * Preview who a notification would reach
+         * @description `eligible` counts members who aren't paused and haven't opted out of the event's type. For `kind=REMINDER` it also leaves out members who said they can't go. The real recipients are chosen when the notification is sent.
          */
         get: operations["audience"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every member's answer
+         * @description All current members, ordered by name (not sortable), with their answer if any. `filter` narrows to one answer or to members who haven't replied. Page size is capped at 100.
+         */
+        get: operations["list_4"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/attendance/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Count who is coming
+         * @description `noReply` counts current members without an answer; answers leave with removed members.
+         */
+        get: operations["summary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -446,6 +534,61 @@ export interface components {
             code?: string;
             /** @description Input the conflict belongs to */
             field?: string;
+        };
+        AnswerRequest: {
+            /** @enum {string} */
+            response: "GOING" | "NOT_GOING";
+            /** @description Plain text for the organizer, at most 280 characters. */
+            note?: string;
+        };
+        PublicAttendanceResponse: {
+            groupName: string;
+            memberName: string;
+            event: components["schemas"]["PublicEvent"];
+            /**
+             * @description The member's current answer; absent until they reply.
+             * @enum {string}
+             */
+            response?: "GOING" | "NOT_GOING";
+            note?: string;
+            /** Format: date-time */
+            respondedAt?: string;
+            /** @description Whether the member can still answer: the event is neither cancelled nor started. */
+            open: boolean;
+        };
+        PublicEvent: {
+            title: string;
+            description?: string;
+            location?: string;
+            /**
+             * Format: date-time
+             * @description The start as an instant (UTC offset included).
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description The end as an instant (UTC offset included).
+             */
+            end: string;
+            /**
+             * Format: date-time
+             * @description The start as wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T10:00:00
+             */
+            localStart: string;
+            /**
+             * Format: date-time
+             * @description The end as wall-clock time in timeZone, without an offset.
+             * @example 2026-11-02T12:00:00
+             */
+            localEnd: string;
+            /** @example Europe/Madrid */
+            timeZone: string;
+            typeName: string;
+            /** @enum {string} */
+            typeColor: "blue" | "green" | "orange" | "red" | "purple" | "pink" | "teal" | "gray";
+            cancelled: boolean;
+            cancellationMessage?: string;
         };
         UpdateMemberRequest: {
             name: string;
@@ -542,6 +685,11 @@ export interface components {
              */
             cancelledAt?: string;
             cancellationMessage?: string;
+            /**
+             * Format: int64
+             * @description Members who answered Going; current members only.
+             */
+            goingCount: number;
         };
         EventTypeSummary: {
             /** Format: uuid */
@@ -550,6 +698,34 @@ export interface components {
             /** @enum {string} */
             color: "blue" | "green" | "orange" | "red" | "purple" | "pink" | "teal" | "gray";
             archived: boolean;
+        };
+        SetAttendanceRequest: {
+            /** @enum {string} */
+            response: "GOING" | "NOT_GOING";
+            /** @description Plain text, at most 280 characters. */
+            note?: string;
+        };
+        AttendanceRowResponse: {
+            member: components["schemas"]["MemberSummary"];
+            /**
+             * @description Absent when the member hasn't replied.
+             * @enum {string}
+             */
+            response?: "GOING" | "NOT_GOING";
+            note?: string;
+            /**
+             * @description Who set the latest answer. Absent when there is none.
+             * @enum {string}
+             */
+            source?: "MEMBER" | "ORGANIZER";
+            /** Format: date-time */
+            respondedAt?: string;
+        };
+        MemberSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            email: string;
         };
         UpdateEventTypeRequest: {
             name: string;
@@ -762,7 +938,7 @@ export interface components {
         AudienceResponse: {
             /**
              * Format: int32
-             * @description Members an invitation would reach right now.
+             * @description Members a notification of the requested kind would reach right now.
              */
             eligible: number;
             /**
@@ -770,6 +946,26 @@ export interface components {
              * @description Members in the group.
              */
             total: number;
+        };
+        PagedModelAttendanceRowResponse: {
+            content: components["schemas"]["AttendanceRowResponse"][];
+            page: components["schemas"]["PageMetadata"];
+        };
+        AttendanceSummaryResponse: {
+            /** Format: int64 */
+            going: number;
+            /** Format: int64 */
+            notGoing: number;
+            /**
+             * Format: int64
+             * @description Current members without an answer.
+             */
+            noReply: number;
+            /**
+             * Format: int64
+             * @description Current members in the group.
+             */
+            members: number;
         };
         PagedModelEventTypeResponse: {
             content: components["schemas"]["EventTypeResponse"][];
@@ -880,6 +1076,101 @@ export interface operations {
         };
     };
     get_1: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The token from the member's link */
+                "X-Member-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAttendanceResponse"];
+                };
+            };
+            /** @description Invalid link (member-token.invalid) or expired link (member-token.expired) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    answer: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The token from the member's link */
+                "X-Member-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAttendanceResponse"];
+                };
+            };
+            /** @description Invalid link (member-token.invalid) or expired link (member-token.expired) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The event started or was cancelled (attendance.closed) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1010,7 +1301,7 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    get_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1159,7 +1450,109 @@ export interface operations {
             };
         };
     };
-    get_3: {
+    set: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAttendanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRowResponse"];
+                };
+            };
+            /** @description Event or member not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The event is cancelled (attendance.closed) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    clear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Event or member not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The event is cancelled (attendance.closed) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    get_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2052,7 +2445,10 @@ export interface operations {
     };
     audience: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description INVITATION or REMINDER */
+                kind?: "INVITATION" | "REMINDER" | "CANCELLATION";
+            };
             header?: never;
             path: {
                 eventId: string;
@@ -2068,6 +2464,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AudienceResponse"];
+                };
+            };
+            /** @description Invalid kind (notification.invalid-kind for CANCELLATION) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    list_4: {
+        parameters: {
+            query?: {
+                filter?: "ALL" | "GOING" | "NOT_GOING" | "NO_REPLY";
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedModelAttendanceRowResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSummaryResponse"];
                 };
             };
             /** @description Not found */
