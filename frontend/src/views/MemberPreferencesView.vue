@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
 import ErrorBanner from '@/components/ErrorBanner.vue'
+import LinkProblem from '@/components/LinkProblem.vue'
 import PreferenceRow from '@/components/PreferenceRow.vue'
 import SaveStatus from '@/components/SaveStatus.vue'
 import ToggleSwitch from '@/components/ToggleSwitch.vue'
@@ -48,13 +49,7 @@ const group = 'divide-y divide-[var(--app-line)]/60 overflow-hidden rounded-2xl 
       </div>
     </div>
 
-    <p v-else-if="store.status === 'invalid'" class="mt-4 text-[17px]">
-      This link isn't valid. Use the latest link from your email, or ask your organizer for a new one.
-    </p>
-
-    <p v-else-if="store.status === 'expired'" class="mt-4 text-[17px]">
-      This link has expired. Ask your organizer for a new one.
-    </p>
+    <LinkProblem v-else-if="store.status === 'invalid' || store.status === 'expired'" :kind="store.status" />
 
     <div v-else-if="store.status === 'error' && store.error" class="mt-6">
       <ErrorBanner :error="store.error">
