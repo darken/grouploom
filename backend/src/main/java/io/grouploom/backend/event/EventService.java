@@ -6,7 +6,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -15,6 +19,8 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.grouploom.backend.attendance.AttendanceRepository;
+import io.grouploom.backend.attendance.GoingCount;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
 import io.grouploom.backend.error.ConflictException;
@@ -42,15 +48,18 @@ public class EventService {
 	private final GroupRepository groups;
 	private final EventNotificationService notificationService;
 	private final EventNotificationRepository notifications;
+	private final AttendanceRepository attendances;
 	private final Clock clock;
 
 	public EventService(EventRepository events, EventTypeRepository eventTypes, GroupRepository groups,
-			EventNotificationService notificationService, EventNotificationRepository notifications, Clock clock) {
+			EventNotificationService notificationService, EventNotificationRepository notifications, AttendanceRepository attendances,
+			Clock clock) {
 		this.events = events;
 		this.eventTypes = eventTypes;
 		this.groups = groups;
 		this.notificationService = notificationService;
 		this.notifications = notifications;
+		this.attendances = attendances;
 		this.clock = clock;
 	}
 
@@ -60,12 +69,14 @@ public class EventService {
 		Page<Event> page = when == When.PAST
 				? events.findPast(current.groupId(), now, eventTypeId, pageable)
 				: events.findUpcoming(current.groupId(), now, eventTypeId, pageable);
-		return page.map(EventMapper::toResponse);
+		// One grouped query for the whole page; events nobody is going to are absent from it.
+		Map<UUID, Long> going = goingCounts(page.getContent());
+		return page.map(e -> EventMapper.toResponse(e, going.getOrDefault(e.getId(), 0L)));
 	}
 
 	@Transactional(readOnly = true)
 	public EventResponse get(CurrentUser current, UUID id) {
-		return EventMapper.toResponse(find(current, id));
+		return respond(find(current, id));
 	}
 
 	@Transactional
@@ -78,7 +89,7 @@ public class EventService {
 		Event created = new Event(groups.getReferenceById(current.groupId()), type, request.title().trim(),
 				request.description(), request.location(), times.start(), times.end(), request.timeZone(),
 				clock.instant());
-		return EventMapper.toResponse(flush(created));
+		return EventMapper.toResponse(flush(created), 0);
 	}
 
 	@Transactional
@@ -103,7 +114,7 @@ public class EventService {
 		if (startMoved) {
 			notificationService.onEventRescheduled(event, times.start());
 		}
-		return EventMapper.toResponse(flush(event));
+		return respond(flush(event));
 	}
 
 	@Transactional
@@ -118,9 +129,22 @@ public class EventService {
 				: request.message().trim();
 		event.cancel(message, now);
 		// Flush first: the row lock taken here makes a concurrent fan-out finish before we look at what was sent.
-		EventResponse response = EventMapper.toResponse(flush(event));
+		EventResponse response = respond(flush(event));
 		notificationService.onEventCancelled(event, current);
 		return response;
+	}
+
+	private EventResponse respond(Event event) {
+		return EventMapper.toResponse(event, goingCounts(List.of(event)).getOrDefault(event.getId(), 0L));
+	}
+
+	private Map<UUID, Long> goingCounts(Collection<Event> events) {
+		if (events.isEmpty()) {
+			return Map.of();
+		}
+		return attendances.countGoing(events.stream().map(Event::getId).toList())
+			.stream()
+			.collect(Collectors.toMap(GoingCount::eventId, GoingCount::count));
 	}
 
 	private static void requireNotCancelled(Event event) {

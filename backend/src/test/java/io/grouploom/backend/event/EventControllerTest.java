@@ -71,7 +71,7 @@ class EventControllerTest {
 		return new EventResponse(ID, "Practice", "Weekly", "Gym", Instant.parse("2026-11-02T09:00:00Z"),
 				Instant.parse("2026-11-02T11:00:00Z"), LocalDateTime.parse("2026-11-02T10:00:00"),
 				LocalDateTime.parse("2026-11-02T12:00:00"), "Europe/Madrid",
-				new EventTypeSummary(TYPE_ID, "Training", EventTypeColor.GREEN, false), 0, NOW, NOW, null, null);
+				new EventTypeSummary(TYPE_ID, "Training", EventTypeColor.GREEN, false), 0, NOW, NOW, null, null, 12);
 	}
 
 	private static String body(String overrides) {
@@ -191,14 +191,15 @@ class EventControllerTest {
 			.andExpect(jsonPath("$.eventType.name").value("Training"))
 			.andExpect(jsonPath("$.eventType.color").value("green"))
 			.andExpect(jsonPath("$.eventType.archived").value(false))
-			.andExpect(jsonPath("$.version").value(0));
+			.andExpect(jsonPath("$.version").value(0))
+			.andExpect(jsonPath("$.goingCount").value(12));
 	}
 
 	@Test
 	void get_withoutOptionalFields_omitsThemInsteadOfSendingNull() throws Exception {
 		EventResponse r = response();
 		given(service.get(any(), eq(ID))).willReturn(new EventResponse(r.id(), r.title(), null, null, r.start(), r.end(),
-				r.localStart(), r.localEnd(), r.timeZone(), r.eventType(), 0, NOW, NOW, null, null));
+				r.localStart(), r.localEnd(), r.timeZone(), r.eventType(), 0, NOW, NOW, null, null, 0));
 
 		mockMvc.perform(api(get("/api/events/" + ID)))
 			.andExpect(jsonPath("$", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasKey("description"))))

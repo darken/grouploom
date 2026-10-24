@@ -27,5 +27,6 @@ public record EventResponse(
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
 		@Schema(description = "Set once the event is cancelled.") Instant cancelledAt,
-		String cancellationMessage) {
+		String cancellationMessage,
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Members who answered Going; current members only.") long goingCount) {
 }
