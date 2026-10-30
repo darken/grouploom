@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.email.DeliveryCount;
+import io.grouploom.backend.email.EmailKind;
 import io.grouploom.backend.email.EmailOutboxRepository;
 import io.grouploom.backend.email.EmailStatus;
 import io.grouploom.backend.error.BadRequestException;
@@ -70,9 +71,16 @@ public class EventNotificationService {
 	}
 
 	@Transactional(readOnly = true)
-	public AudienceResponse audience(CurrentUser current, UUID eventId) {
+	public AudienceResponse audience(CurrentUser current, UUID eventId, NotificationKind kind) {
 		Event event = findEvent(current, eventId);
-		return new AudienceResponse(outbox.countEligibleRecipients(current.groupId(), event.getEventType().getId()),
+		EmailKind emailKind = switch (kind) {
+			case INVITATION -> EmailKind.EVENT_INVITATION;
+			case REMINDER -> EmailKind.EVENT_REMINDER;
+			case CANCELLATION -> throw new BadRequestException("Only invitations and reminders have an audience preview.",
+					"notification.invalid-kind", "kind");
+		};
+		return new AudienceResponse(
+				outbox.countEligibleRecipients(current.groupId(), event.getEventType().getId(), event.getId(), emailKind.name()),
 				outbox.countMembers(current.groupId()));
 	}
 

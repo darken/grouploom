@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -56,14 +57,18 @@ public class EventNotificationController {
 	}
 
 	@GetMapping("/audience")
-	@Operation(summary = "Preview who an invitation would reach",
+	@Operation(summary = "Preview who a notification would reach",
 			description = "`eligible` counts members who aren't paused and haven't opted out of the event's type. "
+					+ "For `kind=REMINDER` it also leaves out members who said they can't go. "
 					+ "The real recipients are chosen when the notification is sent.")
 	@ApiResponse(responseCode = "200", description = "OK",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = AudienceResponse.class)))
+	@ApiResponse(responseCode = "400", description = "Invalid kind (notification.invalid-kind for CANCELLATION)",
+			content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemDetail.class)))
 	@ApiResponse(responseCode = "404", description = "Not found", content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = ProblemDetail.class)))
-	public AudienceResponse audience(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID eventId) {
-		return service.audience(current, eventId);
+	public AudienceResponse audience(@Parameter(hidden = true) CurrentUser current, @PathVariable UUID eventId,
+			@Parameter(description = "INVITATION or REMINDER") @RequestParam(defaultValue = "INVITATION") NotificationKind kind) {
+		return service.audience(current, eventId, kind);
 	}
 
 	@PostMapping

@@ -1,17 +1,26 @@
 package io.grouploom.backend.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.TemplateEngine;
 
+import io.grouploom.backend.attendance.Attendance;
+import io.grouploom.backend.attendance.AttendanceRepository;
+import io.grouploom.backend.attendance.AttendanceResponse;
 import io.grouploom.backend.config.MailTemplateConfig;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.event.Event;
@@ -35,13 +44,15 @@ class EventEmailComposersTest {
 	private static final Instant END = Instant.parse("2026-11-07T11:00:00Z");
 	private static final IssuedToken PREFERENCES = new IssuedToken("pref_tok-1", CREATED.plus(Duration.ofDays(60)));
 	private static final IssuedToken UNSUBSCRIBE = new IssuedToken("unsub_tok-2", CREATED.plus(Duration.ofDays(60)));
+	private static final IssuedToken ATTENDANCE = new IssuedToken("att_tok-3", CREATED.plus(Duration.ofDays(60)));
 
 	private final TemplateEngine engine = new MailTemplateConfig().mailTemplateEngine();
 	private final MemberTokenService tokens = mock(MemberTokenService.class);
+	private final AttendanceRepository attendances = mock(AttendanceRepository.class);
 	private final EventInvitationEmailComposer invitations = new EventInvitationEmailComposer(engine,
-			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens);
+			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens, attendances);
 	private final EventCancellationEmailComposer cancellations = new EventCancellationEmailComposer(engine,
-			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens);
+			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens, attendances);
 
 	private Group group;
 	private Member member;
@@ -56,6 +67,7 @@ class EventEmailComposersTest {
 		type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, CREATED);
 		given(tokens.issue(member, MemberTokenPurpose.PREFERENCES)).willReturn(PREFERENCES);
 		given(tokens.issue(member, MemberTokenPurpose.UNSUBSCRIBE)).willReturn(UNSUBSCRIBE);
+		given(tokens.issue(eq(member), eq(MemberTokenPurpose.ATTENDANCE), any(Event.class))).willReturn(ATTENDANCE);
 	}
 
 	private Event event(String title, String description, String location) {
@@ -215,6 +227,136 @@ class EventEmailComposersTest {
 		OutgoingEmail email = invitations.compose(entry(EmailKind.EVENT_INVITATION, e, NotificationKind.INVITATION, CREATED, null, null));
 
 		assertThat(email.replyTo()).isNull();
+	}
+
+	// --- attendance ---
+
+	private static final String GOING_LINK = "https://app.example.com/m/attend#t=att_tok-3&r=going";
+	private static final String NOT_GOING_LINK = "https://app.example.com/m/attend#t=att_tok-3&r=not-going";
+	private static final String CHANGE_LINK = "https://app.example.com/m/attend#t=att_tok-3";
+
+	// Attribute values in the HTML part escape the ampersand.
+	private static String inHtml(String link) {
+		return link.replace("&", "&amp;");
+	}
+
+	private void answered(Event event, AttendanceResponse response) {
+		Attendance a = BeanUtils.instantiateClass(Attendance.class);
+		ReflectionTestUtils.setField(a, "response", response);
+		given(attendances.findByEventIdAndMemberId(eq(event.getId()), any())).willReturn(Optional.of(a));
+	}
+
+	@Test
+	void compose_invitationWithoutAnAnswer_hasBothReplyLinksInHtmlAndText() {
+		OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+		assertThat(email.html()).contains("href=\"" + inHtml(GOING_LINK) + "\"").contains("href=\"" + inHtml(NOT_GOING_LINK) + "\"")
+			.contains(">Going<").contains(">Can't go<").contains("You can change your answer until the event starts.");
+		assertThat(email.text()).contains(GOING_LINK).contains(NOT_GOING_LINK)
+			.contains("You can change your answer until the event starts.");
+		assertThat(email.html()).doesNotContain("Change answer").doesNotContain("You're going");
+		assertThat(email.text()).doesNotContain("Change answer");
+	}
+
+	@Test
+	void compose_invitationWithoutAnAnswer_showsTheReplyBlockOnceAndInsideTheCard() {
+		OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+		assertThat(email.html().split(">Going<", -1)).hasSize(2);
+		assertThat(email.html().split("You can change your answer until the event starts.", -1)).hasSize(2);
+		assertThat(email.html().indexOf(">Going<")).isLessThan(email.html().indexOf("You're getting this because"));
+	}
+
+	@Test
+	void compose_reminderForAMemberWhoIsGoing_showsTheStatusOnce() {
+		Event e = event("Practice", null, null);
+		answered(e, AttendanceResponse.GOING);
+
+		OutgoingEmail email = reminder(e, Instant.parse("2026-11-06T09:00:00Z"));
+
+		assertThat(email.html().split("You're going", -1)).hasSize(2);
+		assertThat(email.html().split("Change answer", -1)).hasSize(2);
+		assertThat(email.html().indexOf("You're going")).isLessThan(email.html().indexOf("You're getting this because"));
+	}
+
+	@Test
+	void compose_reminderWithoutAnAnswer_hasBothReplyLinksInHtmlAndText() {
+		OutgoingEmail email = reminder(event("Practice", null, null), Instant.parse("2026-11-06T09:00:00Z"));
+
+		assertThat(email.html()).contains(inHtml(GOING_LINK)).contains(inHtml(NOT_GOING_LINK));
+		assertThat(email.text()).contains(GOING_LINK).contains(NOT_GOING_LINK);
+	}
+
+	@Test
+	void compose_reminderForAMemberWhoIsGoing_showsTheStatusAndAChangeLinkWithoutAChoice() {
+		Event e = event("Practice", null, null);
+		answered(e, AttendanceResponse.GOING);
+
+		OutgoingEmail email = reminder(e, Instant.parse("2026-11-06T09:00:00Z"));
+
+		assertThat(email.html()).contains("You're going").contains("Change answer").contains("href=\"" + CHANGE_LINK + "\"")
+			.doesNotContain("r=going").doesNotContain("r=not-going").doesNotContain(">Can't go<");
+		assertThat(email.text()).contains("You're going").contains("Change answer").contains(CHANGE_LINK)
+			.doesNotContain("r=going").doesNotContain("r=not-going");
+	}
+
+	@Test
+	void compose_invitationForAMemberWhoCannotGo_showsTheStatusAndAChangeLink() {
+		Event e = event("Practice", null, null);
+		answered(e, AttendanceResponse.NOT_GOING);
+
+		OutgoingEmail email = invitation(e, null);
+
+		assertThat(email.html()).contains("You said you can't go").contains("Change answer").contains(CHANGE_LINK);
+		assertThat(email.text()).contains("You said you can't go").contains(CHANGE_LINK);
+		assertThat(email.html()).doesNotContain("r=going").doesNotContain("You can change your answer until");
+	}
+
+	@Test
+	void compose_cancellation_hasNoAttendanceBlockAndIssuesNoAttendanceToken() {
+		OutgoingEmail email = cancellation(event("Practice", null, null), null);
+
+		for (String body : new String[] { email.text(), email.html() }) {
+			assertThat(body).doesNotContain("/m/attend").doesNotContain("att_tok-3").doesNotContain("Change answer");
+		}
+		verify(tokens, never()).issue(any(), eq(MemberTokenPurpose.ATTENDANCE), any());
+	}
+
+	@Test
+	void compose_attendanceLinksCarryAFreshTokenForEachEmail() {
+		Event e = event("Practice", null, null);
+		given(tokens.issue(eq(member), eq(MemberTokenPurpose.ATTENDANCE), eq(e)))
+			.willReturn(new IssuedToken("first-tok", CREATED), new IssuedToken("second-tok", CREATED));
+
+		OutgoingEmail first = invitation(e, null);
+		OutgoingEmail second = invitation(e, null);
+
+		assertThat(first.text()).contains("#t=first-tok&r=going").doesNotContain("second-tok");
+		assertThat(second.text()).contains("#t=second-tok&r=going").doesNotContain("first-tok");
+	}
+
+	@Test
+	void compose_attendanceToken_isBoundToTheEventOfTheEmail() {
+		Event e = event("Practice", null, null);
+
+		invitation(e, null);
+
+		verify(tokens).issue(member, MemberTokenPurpose.ATTENDANCE, e);
+	}
+
+	@Test
+	void compose_replyLinksNeverShowThePreferencesOrUnsubscribeTokens() {
+		OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+		assertThat(email.text()).doesNotContain("unsub_tok-2");
+		assertThat(email.html()).doesNotContain("unsub_tok-2");
+	}
+
+	@Test
+	void compose_replyButtonsAdaptToDarkMode() {
+		OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+		assertThat(email.html()).contains("btn-fill").contains("btn-outline");
 	}
 
 }

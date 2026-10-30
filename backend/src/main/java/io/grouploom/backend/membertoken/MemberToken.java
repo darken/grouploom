@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
+import io.grouploom.backend.event.Event;
 import io.grouploom.backend.member.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,6 +30,11 @@ public class MemberToken {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "member_id", nullable = false, updatable = false)
 	private Member member;
+
+	/** Set for {@link MemberTokenPurpose#ATTENDANCE} tokens only. */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "event_id", updatable = false)
+	private Event event;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 30)
@@ -62,6 +68,12 @@ public class MemberToken {
 		this.createdAt = createdAt;
 	}
 
+	public MemberToken(Member member, MemberTokenPurpose purpose, String tokenHash, Instant expiresAt,
+			Instant createdAt, Event event) {
+		this(member, purpose, tokenHash, expiresAt, createdAt);
+		this.event = event;
+	}
+
 	public boolean isRevoked() {
 		return revokedAt != null;
 	}
@@ -90,6 +102,10 @@ public class MemberToken {
 
 	public Member getMember() {
 		return member;
+	}
+
+	public Event getEvent() {
+		return event;
 	}
 
 	public MemberTokenPurpose getPurpose() {

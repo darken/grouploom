@@ -33,4 +33,16 @@ describe('SegmentedControl', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['archived'])
     wrapper.unmount()
   })
+
+  it('keeps each label on one line and tightens the padding on narrow screens so four options fit a phone', () => {
+    const wrapper = mount(SegmentedControl, {
+      props: { modelValue: 'a', options: [{ value: 'a', label: 'All' }, { value: 'b', label: "Can't go" }], label: 'Filter' },
+    })
+
+    for (const radio of wrapper.findAll('[role=radio]')) {
+      expect(radio.classes()).toContain('whitespace-nowrap')
+      expect(radio.classes()).toContain('px-3')
+      expect(radio.classes()).toContain('sm:px-4')
+    }
+  })
 })

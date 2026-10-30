@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import { ApiError, unwrap } from '@/api/errors'
 import type { components } from '@/api/schema'
+import { useMemberLinkToken } from '@/composables/useMemberLinkToken'
 
 export type MemberPreferences = components['schemas']['PublicPreferencesResponse']
 type UpdateBody = components['schemas']['UpdatePreferencesRequest']
@@ -13,22 +14,6 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 // Kept per tab so a reload still works after the fragment has been removed from the address bar.
 const STORAGE_KEY = 'gl_member_token'
-
-function readSaved(): string | null {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-function writeSaved(token: string) {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, token)
-  } catch {
-    // Private mode or blocked storage: the page works, it just won't survive a reload.
-  }
-}
 
 function toApiError(e: unknown): ApiError {
   return e instanceof ApiError
@@ -40,7 +25,8 @@ function toApiError(e: unknown): ApiError {
 const tokenParams = (token: string | null) => ({ header: { 'X-Member-Token': token ?? '' } })
 
 export const useMemberPreferencesStore = defineStore('memberPreferences', () => {
-  const token = ref<string | null>(null)
+  const link = useMemberLinkToken(STORAGE_KEY)
+  const token = link.token
   const data = ref<MemberPreferences | null>(null)
   const status = ref<PreferencesStatus>('loading')
   const saving = ref(false)
@@ -59,15 +45,9 @@ export const useMemberPreferencesStore = defineStore('memberPreferences', () => 
   let dirty = false
   let inFlight = false
 
-  /** Takes the link token from the URL fragment (`#t=…`), keeps it for this tab and removes it from the address bar. */
+  /** Takes the link token from the URL fragment (`#t=…`) or the one saved for this tab. */
   function init(hash: string) {
-    const fromFragment = new URLSearchParams(hash.replace(/^#/, '')).get('t')
-    if (fromFragment) {
-      writeSaved(fromFragment)
-      // Keep the router's history state; only the fragment goes.
-      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
-    }
-    token.value = fromFragment || readSaved() || null
+    link.open(hash)
     if (!token.value) status.value = 'invalid'
   }
 

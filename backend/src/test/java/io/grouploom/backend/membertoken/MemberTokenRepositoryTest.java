@@ -15,6 +15,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.grouploom.backend.TestcontainersConfiguration;
+import io.grouploom.backend.event.Event;
+import io.grouploom.backend.event.EventRepository;
+import io.grouploom.backend.eventtype.EventType;
+import io.grouploom.backend.eventtype.EventTypeColor;
+import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
 import io.grouploom.backend.member.Member;
@@ -33,6 +38,8 @@ class MemberTokenRepositoryTest {
 	@Autowired GroupRepository groups;
 	@Autowired MemberRepository members;
 	@Autowired MemberTokenRepository tokens;
+	@Autowired EventTypeRepository eventTypes;
+	@Autowired EventRepository events;
 	@Autowired JdbcTemplate jdbc;
 	@Autowired EntityManager em;
 
@@ -124,6 +131,54 @@ class MemberTokenRepositoryTest {
 				"insert into member_tokens (id, member_id, purpose, token_hash, expires_at) values (?, ?, 'ADMIN', ?, now())",
 				UUID.randomUUID(), m.getId(), "d".repeat(64)))
 			.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	private Event event(Member m) {
+		EventType type = eventTypes.save(new EventType(m.getGroup(), "Practice", null, EventTypeColor.GREEN, null, NOW));
+		return events.saveAndFlush(new Event(m.getGroup(), type, "Practice", null, null, LATER, LATER.plusSeconds(3600), "UTC", NOW));
+	}
+
+	private void insertToken(Member m, String purpose, UUID eventId, String hash) {
+		jdbc.update("insert into member_tokens (id, member_id, purpose, token_hash, expires_at, event_id) "
+				+ "values (?, ?, ?, ?, now(), ?)", UUID.randomUUID(), m.getId(), purpose, hash, eventId);
+	}
+
+	@Test
+	void insert_attendanceTokenWithAnEvent_isAccepted() {
+		Member m = member("ana@example.com");
+
+		insertToken(m, "ATTENDANCE", event(m).getId(), "e".repeat(64));
+
+		assertThat(jdbc.queryForObject("select count(*) from member_tokens", Long.class)).isEqualTo(1);
+	}
+
+	@Test
+	void insert_attendanceTokenWithoutAnEvent_violatesCheckConstraint() {
+		Member m = member("ana@example.com");
+
+		assertThatThrownBy(() -> insertToken(m, "ATTENDANCE", null, "f".repeat(64)))
+			.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void insert_preferencesTokenWithAnEvent_violatesCheckConstraint() {
+		Member m = member("ana@example.com");
+		UUID eventId = event(m).getId();
+
+		assertThatThrownBy(() -> insertToken(m, "PREFERENCES", eventId, "g".repeat(64)))
+			.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void deleteEvent_cascadesToItsAttendanceTokens() {
+		Member m = member("ana@example.com");
+		Event e = event(m);
+		insertToken(m, "ATTENDANCE", e.getId(), "h".repeat(64));
+		insertToken(m, "PREFERENCES", null, "i".repeat(64));
+
+		jdbc.update("delete from events where id = ?", e.getId());
+
+		assertThat(jdbc.queryForList("select purpose from member_tokens", String.class)).containsExactly("PREFERENCES");
 	}
 
 }

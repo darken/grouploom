@@ -101,7 +101,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void audience_returns200() throws Exception {
-		given(service.audience(any(), eq(EVENT_ID))).willReturn(new AudienceResponse(18, 24));
+		given(service.audience(any(), eq(EVENT_ID), eq(NotificationKind.INVITATION))).willReturn(new AudienceResponse(18, 24));
 
 		mockMvc.perform(api(get(BASE + "/audience")))
 			.andExpect(status().isOk())
@@ -110,8 +110,22 @@ class EventNotificationControllerTest {
 	}
 
 	@Test
+	void audience_withKindReminder_asksForTheReminderAudience() throws Exception {
+		given(service.audience(any(), eq(EVENT_ID), eq(NotificationKind.REMINDER))).willReturn(new AudienceResponse(15, 24));
+
+		mockMvc.perform(api(get(BASE + "/audience?kind=REMINDER")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.eligible").value(15));
+	}
+
+	@Test
+	void audience_withUnknownKind_returns400() throws Exception {
+		mockMvc.perform(api(get(BASE + "/audience?kind=NOPE"))).andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void audience_forAnotherGroupsEvent_returns404() throws Exception {
-		given(service.audience(any(), eq(EVENT_ID))).willThrow(new NotFoundException("Event not found."));
+		given(service.audience(any(), eq(EVENT_ID), any())).willThrow(new NotFoundException("Event not found."));
 
 		mockMvc.perform(api(get(BASE + "/audience"))).andExpect(status().isNotFound());
 	}

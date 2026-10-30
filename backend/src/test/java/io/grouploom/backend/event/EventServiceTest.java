@@ -29,6 +29,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import io.grouploom.backend.attendance.AttendanceRepository;
+import io.grouploom.backend.attendance.GoingCount;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
 import io.grouploom.backend.error.ConflictException;
@@ -58,6 +60,7 @@ class EventServiceTest {
 	@Mock GroupRepository groups;
 	@Mock EventNotificationService notificationService;
 	@Mock EventNotificationRepository notificationRepository;
+	@Mock AttendanceRepository attendances;
 
 	private final UUID groupId = UUID.randomUUID();
 	private final CurrentUser current = new CurrentUser(UUID.randomUUID(), groupId, Role.ORGANIZER);
@@ -73,7 +76,7 @@ class EventServiceTest {
 		practice = eventType("Practice");
 		given(repository.saveAndFlush(any(Event.class))).willAnswer(i -> i.getArgument(0));
 		service = new EventService(repository, eventTypes, groups, notificationService, notificationRepository,
-				Clock.fixed(NOW, ZoneOffset.UTC));
+				attendances, Clock.fixed(NOW, ZoneOffset.UTC));
 	}
 
 	private EventType eventType(String name) {
@@ -501,6 +504,61 @@ class EventServiceTest {
 
 		assertThat(service.list(current, When.PAST, null, page).getContent()).isEmpty();
 		verify(repository, never()).findUpcoming(any(), any(), any(), any());
+	}
+
+	// --- going counts ---
+
+	@Test
+	void list_fillsTheGoingCountsFromOneGroupedQuery() {
+		Event first = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+		Event second = existing(practice, "2026-06-03T10:00:00Z", "2026-06-03T11:00:00Z");
+		PageRequest page = PageRequest.of(0, 20);
+		given(repository.findUpcoming(groupId, NOW, null, page)).willReturn(new PageImpl<>(List.of(first, second), page, 2));
+		given(attendances.countGoing(any())).willReturn(List.of(new GoingCount(first.getId(), 12)));
+
+		var content = service.list(current, When.UPCOMING, null, page).getContent();
+
+		assertThat(content).extracting("goingCount").containsExactly(12L, 0L);
+		ArgumentCaptor<java.util.Collection<UUID>> ids = ArgumentCaptor.forClass(java.util.Collection.class);
+		verify(attendances, org.mockito.Mockito.times(1)).countGoing(ids.capture());
+		assertThat(ids.getValue()).containsExactlyInAnyOrder(first.getId(), second.getId());
+	}
+
+	@Test
+	void list_withAnEmptyPage_doesNotQueryGoingCounts() {
+		PageRequest page = PageRequest.of(0, 20);
+		given(repository.findPast(groupId, NOW, null, page)).willReturn(new PageImpl<>(List.of(), page, 0));
+
+		service.list(current, When.PAST, null, page);
+
+		verify(attendances, never()).countGoing(any());
+	}
+
+	@Test
+	void get_fillsTheGoingCount() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+		given(attendances.countGoing(List.of(e.getId()))).willReturn(List.of(new GoingCount(e.getId(), 5)));
+
+		assertThat(service.get(current, e.getId()).goingCount()).isEqualTo(5);
+	}
+
+	@Test
+	void update_returnsTheCurrentGoingCount() {
+		Event e = existing(practice, "2026-06-02T10:00:00Z", "2026-06-02T11:00:00Z");
+		given(attendances.countGoing(List.of(e.getId()))).willReturn(List.of(new GoingCount(e.getId(), 4)));
+
+		var response = service.update(current, e.getId(),
+				update(e, practice.getId(), "New", "2026-06-02T10:00:00", "2026-06-02T11:00:00", e.getVersion()));
+
+		assertThat(response.goingCount()).isEqualTo(4);
+	}
+
+	@Test
+	void create_startsWithNoOneGoingAndDoesNotQuery() {
+		var response = service.create(current, create("2026-06-02T10:00:00", "2026-06-02T11:30:00"));
+
+		assertThat(response.goingCount()).isZero();
+		verify(attendances, never()).countGoing(any());
 	}
 
 }

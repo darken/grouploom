@@ -19,6 +19,7 @@ const event: EventItem = {
   timeZone: 'Europe/Madrid',
   eventType: { id: 't1', name: 'Practice', color: 'green', archived: false },
   version: 0,
+  goingCount: 0,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 }
@@ -248,5 +249,37 @@ describe('ScheduleNotificationDialog', () => {
     expect(submit(wrapper).attributes('disabled')).toBeDefined()
     await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  describe('audience by kind', () => {
+    const reminder = (w: Wrapper) => w.findAll('[role=radiogroup] [role=radio]').find((k) => k.text() === 'Reminder')!
+
+    it('asks for the reminder audience when switching to Reminder, and for the invitation audience when switching back', async () => {
+      const wrapper = mountDialog()
+
+      await reminder(wrapper).trigger('click')
+      await wrapper.findAll('[role=radiogroup] [role=radio]')[0]!.trigger('click')
+
+      expect(wrapper.emitted('kind-change')).toEqual([['REMINDER'], ['INVITATION']])
+    })
+
+    it('says that members who cannot go are skipped, for reminders only', async () => {
+      const wrapper = mountDialog({ audience: { eligible: 15, total: 24 } })
+      expect(wrapper.find('[data-audience]').text()).not.toContain("can't go")
+
+      await reminder(wrapper).trigger('click')
+
+      expect(wrapper.find('[data-audience]').text()).toBe(
+        "Will be sent to 15 of 24 members. 9 have paused invitations or turned off Practice. Members who said they can't go are skipped.",
+      )
+    })
+
+    it('leaves the skipped note off the warning when nobody will receive it', async () => {
+      const wrapper = mountDialog({ audience: { eligible: 0, total: 5 } })
+
+      await reminder(wrapper).trigger('click')
+
+      expect(wrapper.find('[data-audience]').text()).toBe('No members will receive this right now.')
+    })
   })
 })

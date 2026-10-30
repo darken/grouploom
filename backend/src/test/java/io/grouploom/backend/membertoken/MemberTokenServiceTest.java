@@ -23,6 +23,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.error.InvalidMemberTokenException;
+import io.grouploom.backend.event.Event;
+import io.grouploom.backend.eventtype.EventType;
+import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.security.OpaqueTokens;
@@ -135,16 +138,84 @@ class MemberTokenServiceTest {
 		org.mockito.Mockito.verifyNoInteractions(repository);
 	}
 
+	private Event event() {
+		Group group = member.getGroup();
+		EventType type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, NOW);
+		Event event = new Event(group, type, "Practice", null, null, NOW.plusSeconds(3600), NOW.plusSeconds(7200), "UTC", NOW);
+		ReflectionTestUtils.setField(event, "id", UUID.randomUUID());
+		return event;
+	}
+
+	private MemberToken storedAttendance(Event event) {
+		MemberToken token = new MemberToken(member, MemberTokenPurpose.ATTENDANCE, OpaqueTokens.hash("raw"),
+				NOW.plusSeconds(60), NOW.minusSeconds(60), event);
+		given(repository.findByTokenHash(OpaqueTokens.hash("raw"))).willReturn(Optional.of(token));
+		return token;
+	}
+
 	@Test
-	void resolve_withTokenOfAnotherPurpose_throwsInvalid() {
-		// Only PREFERENCES exists today (Slice 8 adds ATTENDANCE), so simulate a stored token whose purpose differs.
-		MemberToken token = stored(NOW.plusSeconds(60));
-		ReflectionTestUtils.setField(token, "purpose", null);
+	void issue_attendanceToken_storesTheEventItAnswersFor() {
+		Event event = event();
+
+		var issued = service.issue(member, MemberTokenPurpose.ATTENDANCE, event);
+
+		ArgumentCaptor<MemberToken> captor = ArgumentCaptor.forClass(MemberToken.class);
+		verify(repository).save(captor.capture());
+		assertThat(captor.getValue().getPurpose()).isEqualTo(MemberTokenPurpose.ATTENDANCE);
+		assertThat(captor.getValue().getEvent()).isSameAs(event);
+		assertThat(captor.getValue().getTokenHash()).isEqualTo(OpaqueTokens.hash(issued.raw()));
+		assertThat(captor.getValue().getExpiresAt()).isEqualTo(NOW.plus(TTL));
+	}
+
+	@Test
+	void issue_withoutEvent_storesNoEvent() {
+		service.issue(member, MemberTokenPurpose.PREFERENCES);
+
+		ArgumentCaptor<MemberToken> captor = ArgumentCaptor.forClass(MemberToken.class);
+		verify(repository).save(captor.capture());
+		assertThat(captor.getValue().getEvent()).isNull();
+	}
+
+	@Test
+	void resolveAttendance_withValidToken_returnsMemberAndEventAndMarksItUsed() {
+		Event event = event();
+		MemberToken token = storedAttendance(event);
+
+		var resolved = service.resolveAttendance("raw");
+
+		assertThat(resolved.member()).isSameAs(member);
+		assertThat(resolved.event()).isSameAs(event);
+		assertThat(token.getLastUsedAt()).isEqualTo(NOW);
+	}
+
+	@Test
+	void resolveAttendance_withPreferencesToken_throwsInvalid() {
+		stored(NOW.plusSeconds(60));
+
+		assertThatThrownBy(() -> service.resolveAttendance("raw"))
+			.isInstanceOfSatisfying(InvalidMemberTokenException.class,
+					e -> assertThat(e.getCode()).isEqualTo("member-token.invalid"));
+	}
+
+	@Test
+	void resolve_withAttendanceToken_throwsInvalid() {
+		MemberToken token = storedAttendance(event());
 
 		assertThatThrownBy(() -> service.resolve("raw", MemberTokenPurpose.PREFERENCES))
 			.isInstanceOfSatisfying(InvalidMemberTokenException.class,
 					e -> assertThat(e.getCode()).isEqualTo("member-token.invalid"));
 		assertThat(token.getLastUsedAt()).isNull();
+	}
+
+	@Test
+	void resolveAttendance_withExpiredToken_throwsExpired() {
+		MemberToken token = new MemberToken(member, MemberTokenPurpose.ATTENDANCE, OpaqueTokens.hash("raw"),
+				NOW.minusSeconds(1), NOW.minusSeconds(60), event());
+		given(repository.findByTokenHash(OpaqueTokens.hash("raw"))).willReturn(Optional.of(token));
+
+		assertThatThrownBy(() -> service.resolveAttendance("raw"))
+			.isInstanceOfSatisfying(InvalidMemberTokenException.class,
+					e -> assertThat(e.getCode()).isEqualTo("member-token.expired"));
 	}
 
 	@Test

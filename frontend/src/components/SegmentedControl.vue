@@ -46,7 +46,7 @@ function onKeydown(event: KeyboardEvent) {
       role="radio"
       :aria-checked="option.value === model"
       :tabindex="option.value === model ? 0 : -1"
-      class="relative z-[1] rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150"
+      class="relative z-[1] rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors duration-150 sm:px-4"
       :class="option.value === model ? 'text-[var(--app-ink)]' : 'text-[var(--app-muted)]'"
       @click="model = option.value"
       @keydown="onKeydown"

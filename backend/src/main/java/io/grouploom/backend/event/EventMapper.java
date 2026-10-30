@@ -9,13 +9,14 @@ public final class EventMapper {
 	private EventMapper() {
 	}
 
-	public static EventResponse toResponse(Event e) {
+	public static EventResponse toResponse(Event e, long goingCount) {
 		EventType type = e.getEventType();
 		return new EventResponse(e.getId(), e.getTitle(), e.getDescription(), e.getLocation(), e.getStartsAt(),
 				e.getEndsAt(), e.getStartsAt().atZone(e.getZoneId()).toLocalDateTime(),
 				e.getEndsAt().atZone(e.getZoneId()).toLocalDateTime(), e.getTimeZone(),
 				new EventTypeSummary(type.getId(), type.getName(), type.getColor(), type.isArchived()), e.getVersion(),
-				e.getCreatedAt(), e.getUpdatedAt(), e.getCancelledAt(), e.getCancellationMessage());
+				e.getCreatedAt(), e.getUpdatedAt(), e.getCancelledAt(), e.getCancellationMessage(),
+				goingCount);
 	}
 
 }

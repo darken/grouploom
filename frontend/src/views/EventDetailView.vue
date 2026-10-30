@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import AttendanceList from '@/components/AttendanceList.vue'
+import AttendanceSummary from '@/components/AttendanceSummary.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -10,9 +12,12 @@ import CancelEventDialog from '@/components/CancelEventDialog.vue'
 import ErrorBanner from '@/components/ErrorBanner.vue'
 import EventForm from '@/components/EventForm.vue'
 import NotificationList from '@/components/NotificationList.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
 import ScheduleNotificationDialog from '@/components/ScheduleNotificationDialog.vue'
+import SegmentedControl from '@/components/SegmentedControl.vue'
 import { useToast } from '@/composables/useToast'
-import { useEventNotificationsStore, type ScheduleNotificationInput } from '@/stores/eventNotifications'
+import { useAttendanceStore, type AttendanceAnswer, type AttendanceFilter } from '@/stores/attendance'
+import { useEventNotificationsStore, type AudienceKind, type ScheduleNotificationInput } from '@/stores/eventNotifications'
 import { useEventTypesStore } from '@/stores/eventTypes'
 import { useEventsStore, type EventDraft } from '@/stores/events'
 import { eventTypeColor } from '@/ui/eventTypeColors'
@@ -25,13 +30,50 @@ const router = useRouter()
 const store = useEventsStore()
 const eventTypes = useEventTypesStore()
 const notifications = useEventNotificationsStore()
+const attendance = useAttendanceStore()
 const toast = useToast()
 
 const id = computed(() => String(route.params.id))
 // The list's query state (when, type, page) rides along so the back link restores that view.
-const listQuery = computed(() => route.query)
+// The attendance filter belongs to this page only.
+const listQuery = computed(() => Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'attendance')))
 const event = computed(() => store.current)
 const notFound = computed(() => store.currentError?.status === 404)
+
+// --- attendance ---
+const FILTER_QUERY = { going: 'GOING', 'not-going': 'NOT_GOING', 'no-reply': 'NO_REPLY' } as const
+const FILTER_OPTIONS = [
+  { value: 'ALL', label: 'All' },
+  { value: 'GOING', label: 'Going' },
+  { value: 'NOT_GOING', label: "Can't go" },
+  { value: 'NO_REPLY', label: 'No reply' },
+]
+
+/** The filter lives in the URL (`?attendance=going`), so a reload or a shared link shows the same list. */
+const attendanceFilter = computed<AttendanceFilter>({
+  get() {
+    const value = String(route.query.attendance ?? '')
+    return value in FILTER_QUERY ? FILTER_QUERY[value as keyof typeof FILTER_QUERY] : 'ALL'
+  },
+  set(filter) {
+    const rest = { ...route.query }
+    delete rest.attendance
+    const key = Object.entries(FILTER_QUERY).find(([, value]) => value === filter)?.[0]
+    void router.replace({ query: key ? { ...rest, attendance: key } : rest })
+  },
+})
+
+watch(attendanceFilter, (filter) => void attendance.fetchRows({ filter, page: 0 }))
+
+const attendancePending = computed(() => attendance.summary === null && attendance.rows.length === 0)
+
+async function changeAnswer(action: () => Promise<void>) {
+  await action()
+  if (attendance.error) toast.show("Couldn't update the answer. Try again.")
+}
+
+const setAnswer = (memberId: string, response: AttendanceAnswer) => changeAnswer(() => attendance.set(memberId, response))
+const clearAnswer = (memberId: string) => changeAnswer(() => attendance.clear(memberId))
 
 watch(
   id,
@@ -39,6 +81,8 @@ watch(
     void store.fetchOne(value)
     void notifications.fetch(value)
     notifications.start(value)
+    void attendance.fetchSummary(value)
+    void attendance.fetchRows({ filter: attendanceFilter.value, page: 0 })
   },
   { immediate: true },
 )
@@ -153,8 +197,12 @@ function openSchedule() {
   if (!current) return
   notifications.clearSaveError()
   scheduleError.value = ''
-  void notifications.fetchAudience(current.id)
+  void notifications.fetchAudience(current.id, 'INVITATION')
   scheduling.value = true
+}
+
+const loadAudience = (kind: AudienceKind) => {
+  if (event.value) void notifications.fetchAudience(event.value.id, kind)
 }
 
 const SCHEDULE_MESSAGES = {
@@ -282,6 +330,54 @@ async function unschedule(notificationId: string) {
 
       <p v-if="event.description" data-description class="mt-6 max-w-2xl text-[17px] leading-relaxed whitespace-pre-line">{{ event.description }}</p>
 
+      <section data-attendance class="mt-10" aria-labelledby="attendance-heading">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4">
+          <h2 id="attendance-heading" class="text-xl font-semibold tracking-tight">Attendance</h2>
+          <AttendanceSummary
+            v-if="attendance.summary"
+            :summary="attendance.summary"
+            :filter="attendanceFilter"
+            @select="attendanceFilter = $event"
+          />
+        </div>
+        <ErrorBanner v-if="attendance.error && attendancePending" :error="attendance.error">
+          <BaseButton variant="plain" @click="attendance.fetchSummary(event.id); attendance.fetchRows({ filter: attendanceFilter, page: 0 })">Retry</BaseButton>
+        </ErrorBanner>
+        <EmptyState v-else-if="attendance.summary?.members === 0" title="Add members to track who's coming.">
+          <RouterLink
+            to="/members"
+            class="inline-flex min-h-11 items-center rounded-full bg-[var(--app-accent)] px-5 py-2 text-[15px] font-medium text-white hover:bg-[var(--app-accent-hover)]"
+          >
+            Go to members
+          </RouterLink>
+        </EmptyState>
+        <template v-else-if="!attendancePending">
+          <SegmentedControl v-model="attendanceFilter" :options="FILTER_OPTIONS" label="Filter by answer" />
+          <AttendanceList
+            v-if="attendance.rows.length > 0"
+            class="mt-4"
+            :items="attendance.rows"
+            :read-only="cancelled"
+            @set="setAnswer"
+            @clear="clearAnswer"
+          />
+          <p
+            v-else-if="!attendance.loading"
+            class="mt-4 rounded-2xl border border-dashed border-[var(--app-line)] px-4 py-8 text-center text-[15px] text-[var(--app-muted)]"
+          >
+            No one here yet.
+          </p>
+          <PaginationBar
+            v-if="attendance.pageInfo"
+            class="mt-3"
+            :page="attendance.page"
+            :size="attendance.pageInfo.size"
+            :total="attendance.pageInfo.totalElements"
+            @update:page="attendance.fetchRows({ filter: attendanceFilter, page: $event })"
+          />
+        </template>
+      </section>
+
       <section data-notifications class="mt-10" aria-labelledby="notifications-heading">
         <div class="mb-3 flex items-center justify-between gap-3">
           <h2 id="notifications-heading" class="text-xl font-semibold tracking-tight">Notifications</h2>
@@ -332,6 +428,7 @@ async function unschedule(notificationId: string) {
       :field-errors="notifications.fieldErrors"
       :error="scheduleError"
       @submit="submitSchedule"
+      @kind-change="loadAudience"
       @close="scheduling = false"
     />
 
