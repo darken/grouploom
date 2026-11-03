@@ -112,6 +112,34 @@
       "detail": "サーバーに接続できませんでした。"
     },
     "invalidValue": "値が正しくありません。",
-    "requestFailed": "リクエストに失敗しました。"
+    "requestFailed": "リクエストに失敗しました。",
+    "generic": "問題が発生しました"
+  },
+  "auth": {
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを非表示",
+    "login": {
+      "title": "GroupLoomにログイン",
+      "submit": "ログイン",
+      "newHere": "初めての方は{link}",
+      "createGroup": "グループを作成",
+      "enterEmail": "メールアドレスを入力してください。",
+      "enterPassword": "パスワードを入力してください。"
+    },
+    "signup": {
+      "title": "グループを作成",
+      "groupName": "グループ名",
+      "yourName": "お名前",
+      "passwordHint": "12文字以上",
+      "submit": "グループを作成",
+      "haveAccount": "アカウントをお持ちの方は{link}",
+      "signIn": "ログイン",
+      "enterGroupName": "グループ名を入力してください。",
+      "enterName": "お名前を入力してください。",
+      "passwordTooShort": "12文字以上で入力してください。",
+      "emailTaken": "このメールアドレスのアカウントは既に存在します。"
+    }
   }
 }

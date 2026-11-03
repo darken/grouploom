@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
 
 import { api } from '@/api/client'
+import { applyLocale } from '@/i18n'
 import { createAppRouter } from '@/router'
 import LoginView from '../LoginView.vue'
 
@@ -84,5 +85,20 @@ describe('LoginView', () => {
     await flushPromises()
 
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/nope'))
+  })
+})
+
+describe('LoginView in Japanese', () => {
+  it('shows the form and its validation errors in Japanese', async () => {
+    applyLocale('ja')
+    const { wrapper } = await mountLogin()
+
+    expect(wrapper.get('h1').text()).toBe('GroupLoomにログイン')
+    expect(wrapper.get('button[type=submit]').text()).toBe('ログイン')
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.text()).toContain('メールアドレスを入力してください。')
+    expect(wrapper.text()).toContain('パスワードを入力してください。')
   })
 })

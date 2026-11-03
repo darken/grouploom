@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import TextField from './TextField.vue'
 
@@ -16,6 +17,7 @@ defineProps<{
 
 const emit = defineEmits<{ blur: [] }>()
 
+const { t } = useI18n()
 const visible = ref(false)
 </script>
 
@@ -35,7 +37,7 @@ const visible = ref(false)
       <button
         type="button"
         class="grid size-9 place-items-center rounded-lg text-[var(--app-muted)] transition-colors duration-150 hover:text-[var(--app-ink)]"
-        :aria-label="visible ? 'Hide password' : 'Show password'"
+        :aria-label="visible ? t('auth.hidePassword') : t('auth.showPassword')"
         :aria-pressed="visible"
         @click="visible = !visible"
       >

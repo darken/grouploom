@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { I18nT, useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -10,6 +11,7 @@ import { fieldErrorsFrom, isFormLevel } from '@/composables/useFieldErrors'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const { t } = useI18n()
 const router = useRouter()
 
 type Field = 'groupName' | 'displayName' | 'email' | 'password'
@@ -18,16 +20,16 @@ const form = reactive({ groupName: '', displayName: '', email: '', password: '' 
 const touched = ref<Partial<Record<Field, boolean>>>({})
 
 const clientErrors = computed<Record<Field, string>>(() => ({
-  groupName: !form.groupName.trim() ? 'Enter a name for your group.' : '',
-  displayName: !form.displayName.trim() ? 'Enter your name.' : '',
-  email: !form.email.trim() ? 'Enter your email address.' : '',
-  password: form.password.length < 12 ? 'Use at least 12 characters.' : '',
+  groupName: !form.groupName.trim() ? t('auth.signup.enterGroupName') : '',
+  displayName: !form.displayName.trim() ? t('auth.signup.enterName') : '',
+  email: !form.email.trim() ? t('auth.login.enterEmail') : '',
+  password: form.password.length < 12 ? t('auth.signup.passwordTooShort') : '',
 }))
 
 const serverErrors = computed(() => {
   const errors = fieldErrorsFrom(auth.error)
   // A duplicate email is reported as 409, which belongs under the email field.
-  if (auth.error?.status === 409) errors.email = 'An account with this email already exists.'
+  if (auth.error?.status === 409) errors.email = t('auth.signup.emailTaken')
   return errors
 })
 
@@ -53,11 +55,11 @@ const showBanner = computed(
 </script>
 
 <template>
-  <h1 class="mb-6 text-center text-3xl font-semibold tracking-tight">Create your group</h1>
+  <h1 class="mb-6 text-center text-3xl font-semibold tracking-tight">{{ t('auth.signup.title') }}</h1>
   <form class="space-y-4" novalidate @submit.prevent="submit">
     <TextField
       v-model="form.groupName"
-      label="Group name"
+      :label="t('auth.signup.groupName')"
       name="groupName"
       autocomplete="organization"
       :error="errorFor('groupName')"
@@ -66,7 +68,7 @@ const showBanner = computed(
     />
     <TextField
       v-model="form.displayName"
-      label="Your name"
+      :label="t('auth.signup.yourName')"
       name="displayName"
       autocomplete="name"
       :error="errorFor('displayName')"
@@ -75,7 +77,7 @@ const showBanner = computed(
     />
     <TextField
       v-model="form.email"
-      label="Email"
+      :label="t('auth.email')"
       name="email"
       type="email"
       autocomplete="email"
@@ -85,19 +87,20 @@ const showBanner = computed(
     />
     <PasswordField
       v-model="form.password"
-      label="Password"
+      :label="t('auth.password')"
       name="password"
       autocomplete="new-password"
-      hint="At least 12 characters"
+      :hint="t('auth.signup.passwordHint')"
       :error="errorFor('password')"
       :disabled="auth.loading"
       @blur="touched.password = true"
     />
     <ErrorBanner v-if="showBanner && auth.error" :error="auth.error" />
-    <BaseButton type="submit" block :loading="auth.loading">Create group</BaseButton>
+    <BaseButton type="submit" block :loading="auth.loading">{{ t('auth.signup.submit') }}</BaseButton>
   </form>
-  <p class="mt-6 text-center text-[15px] text-[var(--app-muted)]">
-    Already have an account?
-    <RouterLink to="/login" class="text-[var(--app-accent)] hover:underline">Sign in</RouterLink>
-  </p>
+  <I18nT keypath="auth.signup.haveAccount" tag="p" class="mt-6 text-center text-[15px] text-[var(--app-muted)]">
+    <template #link>
+      <RouterLink to="/login" class="text-[var(--app-accent)] hover:underline">{{ t('auth.signup.signIn') }}</RouterLink>
+    </template>
+  </I18nT>
 </template>

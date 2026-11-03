@@ -112,6 +112,34 @@
       "detail": "Could not reach the server."
     },
     "invalidValue": "Invalid value.",
-    "requestFailed": "Request failed"
+    "requestFailed": "Request failed",
+    "generic": "Something went wrong"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "login": {
+      "title": "Sign in to GroupLoom",
+      "submit": "Sign in",
+      "newHere": "New here? {link}",
+      "createGroup": "Create a group",
+      "enterEmail": "Enter your email address.",
+      "enterPassword": "Enter your password."
+    },
+    "signup": {
+      "title": "Create your group",
+      "groupName": "Group name",
+      "yourName": "Your name",
+      "passwordHint": "At least 12 characters",
+      "submit": "Create group",
+      "haveAccount": "Already have an account? {link}",
+      "signIn": "Sign in",
+      "enterGroupName": "Enter a name for your group.",
+      "enterName": "Enter your name.",
+      "passwordTooShort": "Use at least 12 characters.",
+      "emailTaken": "An account with this email already exists."
+    }
   }
 }

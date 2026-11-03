@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import type { ApiError } from '@/api/errors'
 
+const { t } = useI18n()
 defineProps<{ error: ApiError }>()
 </script>
 
@@ -14,7 +17,7 @@ defineProps<{ error: ApiError }>()
       <path d="M10 6v5M10 13.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
     </svg>
     <div class="flex-1">
-      <p class="font-medium">{{ error.problem.title ?? 'Something went wrong' }}</p>
+      <p class="font-medium">{{ error.problem.title ?? t('errors.generic') }}</p>
       <p v-if="error.problem.detail" class="text-[var(--app-muted)]">{{ error.problem.detail }}</p>
       <ul v-if="error.problem.errors?.length" class="mt-2 list-disc pl-5 text-[var(--app-muted)]">
         <li v-for="item in error.problem.errors" :key="item.field">{{ item.field }}: {{ item.message }}</li>

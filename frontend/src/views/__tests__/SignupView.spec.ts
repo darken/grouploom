@@ -5,6 +5,7 @@ import { createMemoryHistory } from 'vue-router'
 
 import { api } from '@/api/client'
 import { createAppRouter } from '@/router'
+import { applyLocale } from '@/i18n'
 import SignupView from '../SignupView.vue'
 
 vi.mock('@/api/client', () => ({
@@ -74,5 +75,19 @@ describe('SignupView', () => {
 
     expect(wrapper.text()).toContain('Use at least 12 characters.')
     expect(post).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('SignupView in Japanese', () => {
+  it('shows the form in Japanese', async () => {
+    applyLocale('ja')
+    const { wrapper } = await mountSignup()
+
+    expect(wrapper.get('h1').text()).toBe('グループを作成')
+    expect(wrapper.text()).toContain('12文字以上')
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.text()).toContain('グループ名を入力してください。')
   })
 })
