@@ -14,6 +14,9 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      # Seeds the demo group on first start (login in the README).
+      - key: GROUPLOOM_DEMO_ENABLED
+        value: "true"
       - key: GROUPLOOM_JWT_SECRET
         generateValue: true
       # Must match the static site's URL below; member email links point here.
