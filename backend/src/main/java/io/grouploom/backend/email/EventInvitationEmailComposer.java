@@ -1,5 +1,6 @@
 package io.grouploom.backend.email;
 
+import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,13 +31,17 @@ public class EventInvitationEmailComposer extends EventEmailComposerSupport {
 		Event event = entry.getEvent();
 		var zone = event.getZoneId();
 		if (entry.getKind() == EmailKind.EVENT_REMINDER) {
-			String day = EventTimeText.dayWord(event.getStartsAt(), entry.getNotification().getSendAt(), zone);
+			String day = switch (EventTimeText.relativeDay(event.getStartsAt(), entry.getNotification().getSendAt(), zone)) {
+				case TODAY -> "today";
+				case TOMORROW -> "tomorrow";
+				case ON_DATE -> "on " + EventTimeText.date(event.getStartsAt(), zone, Locale.ENGLISH);
+			};
 			String subject = "Reminder: " + event.getTitle() + " is " + day + " at "
-					+ EventTimeText.clock(event.getStartsAt(), zone);
+					+ EventTimeText.clock(event.getStartsAt(), zone, Locale.ENGLISH);
 			return render(entry, subject, "event-reminder", "Reminder", false, true);
 		}
-		String subject = event.getTitle() + " · " + EventTimeText.date(event.getStartsAt(), zone) + ", "
-				+ EventTimeText.clock(event.getStartsAt(), zone);
+		String subject = event.getTitle() + " · " + EventTimeText.date(event.getStartsAt(), zone, Locale.ENGLISH) + ", "
+				+ EventTimeText.clock(event.getStartsAt(), zone, Locale.ENGLISH);
 		return render(entry, subject, "event-invitation", "You're invited", false, true);
 	}
 

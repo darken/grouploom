@@ -58,7 +58,7 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 		context.setVariable("typeName", event.getEventType().getName());
 		context.setVariable("typeColor", hex(event.getEventType().getColor()));
 		context.setVariable("title", event.getTitle());
-		context.setVariable("timeLine", EventTimeText.range(event.getStartsAt(), event.getEndsAt(), event.getZoneId()));
+		context.setVariable("timeLine", EventTimeText.range(event.getStartsAt(), event.getEndsAt(), event.getZoneId(), Locale.ENGLISH));
 		context.setVariable("location", blankToNull(event.getLocation()));
 		context.setVariable("description", blankToNull(event.getDescription()));
 		context.setVariable("note", note);

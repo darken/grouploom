@@ -1,5 +1,6 @@
 package io.grouploom.backend.email;
 
+import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,7 +28,7 @@ public class EventCancellationEmailComposer extends EventEmailComposerSupport {
 	@Override
 	public OutgoingEmail compose(EmailOutboxEntry entry) {
 		Event event = entry.getEvent();
-		String subject = "Cancelled: " + event.getTitle() + " on " + EventTimeText.date(event.getStartsAt(), event.getZoneId());
+		String subject = "Cancelled: " + event.getTitle() + " on " + EventTimeText.date(event.getStartsAt(), event.getZoneId(), Locale.ENGLISH);
 		return render(entry, subject, "event-cancellation", "Cancelled", true, false);
 	}
 
