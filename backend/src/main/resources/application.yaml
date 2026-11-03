@@ -5,6 +5,10 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   mvc:
     servlet:
       path: /api
