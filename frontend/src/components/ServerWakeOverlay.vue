@@ -41,8 +41,11 @@ onBeforeUnmount(() => clearInterval(timer))
           </svg>
           <h2 class="text-lg font-semibold tracking-tight">Waking up the server…</h2>
           <p class="mt-2 text-[15px] text-[var(--app-muted)]">
-            This demo runs on free hosting that sleeps when idle. It usually takes under a minute, and the page
+            This demo runs on free hosting that sleeps when idle. It usually takes around two minutes, and the page
             continues on its own.
+          </p>
+          <p lang="ja" class="mt-2 text-sm text-[var(--app-muted)]">
+            このデモは無料ホスティングで動いており、しばらく使われないとスリープします。起動には通常2分ほどかかります。準備ができると、ページは自動的に表示されます。
           </p>
           <p class="mt-4 text-sm text-[var(--app-muted)] tabular-nums">{{ seconds }} s</p>
         </template>

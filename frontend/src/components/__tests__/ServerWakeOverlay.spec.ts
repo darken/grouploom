@@ -34,7 +34,8 @@ describe('ServerWakeOverlay', () => {
     await nextTick()
 
     expect(wrapper.text()).toContain('Waking up the server')
-    expect(wrapper.text()).toContain('free hosting')
+    expect(wrapper.text()).toContain('It usually takes around two minutes')
+    expect(wrapper.get('[lang="ja"]').text()).toContain('通常2分ほどかかります')
 
     await vi.advanceTimersByTimeAsync(12_000)
     expect(wrapper.text()).toContain('12 s')
