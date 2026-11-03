@@ -7,6 +7,7 @@ import { api } from '@/api/client'
 import ToastHost from '@/components/ToastHost.vue'
 import { useToast } from '@/composables/useToast'
 import { installDialogPolyfill } from '@/components/__tests__/dialogPolyfill'
+import { applyLocale } from '@/i18n'
 import MembersView from '../MembersView.vue'
 
 vi.mock('@/api/client', () => ({
@@ -550,5 +551,40 @@ describe('MembersView', () => {
 
       expect(get).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('MembersView in Japanese', () => {
+  beforeEach(() => {
+    for (const m of [get, post, put, del]) m.mockReset()
+    useToast().dismiss()
+    document.body.innerHTML = ''
+  })
+  afterEach(() => {
+    for (const w of mounted.splice(0)) w.unmount()
+  })
+
+  it('shows the title and the member count in Japanese', async () => {
+    applyLocale('ja')
+    get.mockResolvedValue(pageOf([member('1'), member('2'), member('3')]))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find('h1').text()).toBe('メンバー')
+    expect(wrapper.text()).toContain('3人のメンバー')
+  })
+
+  it('thanks the member by name in the toast after "Save and add another"', async () => {
+    applyLocale('ja')
+    get.mockResolvedValue(pageOf([member('1')]))
+    post.mockResolvedValue({ data: member('2'), response: new Response() })
+    const { wrapper } = await mountView()
+    await button(wrapper, 'メンバーを追加')!.trigger('click')
+    await fillAndSubmit(wrapper, 'Ana', 'ana@example.com')
+
+    await button(wrapper, '保存して続けて追加')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[aria-live=polite]').text()).toContain('Anaさんを追加しました')
   })
 })

@@ -80,7 +80,8 @@
     "deleted": "Deleted",
     "reload": "Reload",
     "cantUndo": "This can't be undone.",
-    "edit": "Edit"
+    "edit": "Edit",
+    "staleTitle": "Changed by someone else"
   },
   "nav": {
     "label": "Primary",
@@ -356,6 +357,71 @@
       "pink": "Pink",
       "teal": "Teal",
       "gray": "Gray"
+    }
+  },
+  "members": {
+    "count": "{n} member | {n} members",
+    "moreActions": "More member actions",
+    "add": "Add member",
+    "emailAll": "Email preferences links to everyone",
+    "editTitle": "Edit member",
+    "actionsFor": "Actions for {name}",
+    "empty": {
+      "noMatch": "No members match \"{q}\".",
+      "none": "No members yet.",
+      "description": "Members get event invitations by email — they don't need an account."
+    },
+    "stale": "This member was updated while you were editing them.",
+    "bulk": {
+      "title": "Email preferences links?",
+      "confirm": "Send links",
+      "everyone": "Send preferences links to every member of the group, not just the search results? Anyone who got a link in the last 5 minutes is skipped.",
+      "count": "Send preferences links to {n} member? Anyone who got a link in the last 5 minutes is skipped. | Send preferences links to {n} members? Anyone who got a link in the last 5 minutes is skipped."
+    },
+    "remove": {
+      "title": "Remove {name}?",
+      "message": "They'll stop receiving invitations. This can't be undone.",
+      "confirm": "Remove"
+    },
+    "toast": {
+      "added": "Member added",
+      "addedNamed": "{name} added",
+      "sendingLink": "Sending link to {name}",
+      "cooldown": "A link was sent to {name} a moment ago. Try again in a few minutes.",
+      "sendFailed": "Couldn't send the link to {name}. Try again.",
+      "bulkFailed": "Couldn't send the links. Try again.",
+      "noLinks": "No links sent",
+      "sendingLinks": "Sending link to {n} member | Sending links to {n} members",
+      "skipped": " · {n} skipped",
+      "removed": "Removed",
+      "linkFailed": "Couldn't create the link. Try again.",
+      "copied": "Link copied. It works for {lifetime}.",
+      "copiedShort": "Link copied."
+    },
+    "form": {
+      "name": "Name",
+      "email": "Email",
+      "enterName": "Enter a name.",
+      "enterEmail": "Enter an email address.",
+      "validEmail": "Enter a valid email address.",
+      "saveAndAdd": "Save and add another"
+    },
+    "list": {
+      "emailLink": "Email preferences link",
+      "copyLink": "Copy preferences link",
+      "remove": "Remove",
+      "paused": "Paused",
+      "days": "{n} day | {n} days",
+      "deliveryFailed": "Couldn't deliver link",
+      "tryAgain": "Try again",
+      "linkSent": "Link sent · {when}",
+      "sending": "Sending link…"
+    },
+    "fallback": {
+      "title": "Preferences link",
+      "body": "Copy this link and send it to {name}. It's personal to them.",
+      "done": "Done",
+      "copy": "Copy"
     }
   }
 }

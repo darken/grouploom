@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import type { Member, MemberDraft } from '@/stores/members'
 import BaseButton from './BaseButton.vue'
 import TextField from './TextField.vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{ member?: Member; saving?: boolean; fieldErrors?: Record<string, string> }>()
 
@@ -23,13 +26,13 @@ const clientErrors = computed(() => {
   const name = form.name.trim()
   const email = form.email.trim()
   return {
-    name: !name ? 'Enter a name.' : name.length > 120 ? 'Use 120 characters or fewer.' : '',
+    name: !name ? t('members.form.enterName') : name.length > 120 ? t('common.maxChars', { n: 120 }) : '',
     email: !email
-      ? 'Enter an email address.'
+      ? t('members.form.enterEmail')
       : email.length > 254
-        ? 'Use 254 characters or fewer.'
+        ? t('common.maxChars', { n: 254 })
         : !EMAIL_PATTERN.test(email)
-          ? 'Enter a valid email address.'
+          ? t('members.form.validEmail')
           : '',
   }
 })
@@ -87,7 +90,7 @@ function onKeydown(event: KeyboardEvent) {
   <form ref="root" class="space-y-5" novalidate @submit.prevent="submit()" @keydown="onKeydown">
     <TextField
       v-model="form.name"
-      label="Name"
+      :label="t('members.form.name')"
       name="name"
       autocomplete="off"
       :error="errorFor('name')"
@@ -96,7 +99,7 @@ function onKeydown(event: KeyboardEvent) {
     />
     <TextField
       v-model="form.email"
-      label="Email"
+      :label="t('members.form.email')"
       name="email"
       type="email"
       autocomplete="off"
@@ -105,11 +108,11 @@ function onKeydown(event: KeyboardEvent) {
       @blur="touched.email = true"
     />
     <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-      <BaseButton class="max-sm:w-full" variant="plain" @click="emit('cancel')">Cancel</BaseButton>
+      <BaseButton class="max-sm:w-full" variant="plain" @click="emit('cancel')">{{ t('common.cancel') }}</BaseButton>
       <BaseButton v-if="!member" class="max-sm:w-full" variant="secondary" :disabled="!canSave" @click="submit(true)">
-        Save and add another
+        {{ t('members.form.saveAndAdd') }}
       </BaseButton>
-      <BaseButton class="max-sm:w-full" type="submit" :loading="saving" :disabled="!canSave">Save</BaseButton>
+      <BaseButton class="max-sm:w-full" type="submit" :loading="saving" :disabled="!canSave">{{ t('common.save') }}</BaseButton>
     </div>
   </form>
 </template>

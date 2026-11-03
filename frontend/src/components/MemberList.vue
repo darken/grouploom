@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useToast } from '@/composables/useToast'
 import { useMembersStore, type Member } from '@/stores/members'
@@ -9,6 +10,8 @@ import BaseButton from './BaseButton.vue'
 import BaseDialog from './BaseDialog.vue'
 import MemberAvatar from './MemberAvatar.vue'
 import OverflowMenu, { type OverflowMenuItem } from './OverflowMenu.vue'
+
+const { t } = useI18n()
 
 defineProps<{ items: Member[]; query?: string }>()
 
@@ -20,12 +23,12 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement | null>(null)
 
-const menuItems: OverflowMenuItem[] = [
-  { id: 'email', label: 'Email preferences link' },
-  { id: 'copy-link', label: 'Copy preferences link' },
-  { id: 'edit', label: 'Edit' },
-  { id: 'remove', label: 'Remove', destructive: true },
-]
+const menuItems = computed<OverflowMenuItem[]>(() => [
+  { id: 'email', label: t('members.list.emailLink') },
+  { id: 'copy-link', label: t('members.list.copyLink') },
+  { id: 'edit', label: t('common.edit') },
+  { id: 'remove', label: t('members.list.remove'), destructive: true },
+])
 
 function choose(action: string, item: Member) {
   if (action === 'edit') emit('edit', item)
@@ -42,19 +45,19 @@ const linkField = useTemplateRef<HTMLInputElement>('linkField')
 
 function lifetime(expiresAt: string): string {
   const days = Math.max(1, Math.round((Date.parse(expiresAt) - Date.now()) / 86_400_000))
-  return `${days} ${days === 1 ? 'day' : 'days'}`
+  return t('members.list.days', days)
 }
 
 async function copyLink(item: Member) {
   // Looked up here, not at setup, so the list stays presentational until this action is used.
   const link = await useMembersStore().createPreferencesLink(item.id)
   if (!link) {
-    toast.show("Couldn't create the link. Try again.")
+    toast.show(t('members.toast.linkFailed'))
     return
   }
   try {
     await navigator.clipboard.writeText(link.url)
-    toast.show(`Link copied. It works for ${lifetime(link.expiresAt)}.`)
+    toast.show(t('members.toast.copied', { lifetime: lifetime(link.expiresAt) }))
   } catch {
     // No clipboard API (insecure context) or the browser refused (e.g. Safari after an awaited request).
     fallback.value = { name: item.name, url: link.url }
@@ -69,13 +72,13 @@ function closeFallback() {
   const name = fallback.value?.name
   fallback.value = null
   // The dialog is removed rather than closed, so hand focus back to the row's actions button ourselves.
-  void nextTick(() => root.value?.querySelector<HTMLElement>(`button[aria-label="Actions for ${name}"]`)?.focus())
+  void nextTick(() => root.value?.querySelector<HTMLElement>(`button[aria-label="${t('members.actionsFor', { name })}"]`)?.focus())
 }
 
 function copyFromField() {
   linkField.value?.select()
   if (document.execCommand?.('copy')) {
-    toast.show('Link copied.')
+    toast.show(t('members.toast.copiedShort'))
     closeFallback()
   }
 }
@@ -110,7 +113,7 @@ function copyFromField() {
                 v-if="item.invitationsPaused"
                 data-paused
                 class="shrink-0 rounded-full bg-[var(--app-fill)] px-2 py-0.5 text-xs font-medium text-[var(--app-muted)]"
-                >Paused</span
+                >{{ t('members.list.paused') }}</span
               >
             </span>
             <span class="block truncate text-sm text-[var(--app-muted)]">
@@ -123,7 +126,7 @@ function copyFromField() {
         </button>
         <div class="pr-3">
           <OverflowMenu
-            :label="`Actions for ${item.name}`"
+            :label="t('members.actionsFor', { name: item.name })"
             :items="menuItems"
             trigger-class="focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0 [@media(hover:none)]:opacity-100"
             @select="choose($event, item)"
@@ -139,35 +142,35 @@ function copyFromField() {
         :class="item.preferencesEmail.status === 'FAILED' ? 'text-[var(--app-danger)]' : 'text-[var(--app-muted)]'"
       >
         <template v-if="item.preferencesEmail.status === 'FAILED'">
-          Couldn't deliver link
+          {{ t('members.list.deliveryFailed') }}
           <button type="button" class="font-medium underline underline-offset-2" @click="emit('send-email', item)">
-            Try again
+            {{ t('members.list.tryAgain') }}
           </button>
         </template>
         <template v-else-if="item.preferencesEmail.status === 'SENT'">
-          Link sent · {{ relativeTime(item.preferencesEmail.at) }}
+          {{ t('members.list.linkSent', { when: relativeTime(item.preferencesEmail.at) }) }}
         </template>
-        <template v-else>Sending link…</template>
+        <template v-else>{{ t('members.list.sending') }}</template>
       </p>
     </li>
   </ul>
 
-  <BaseDialog v-if="fallback" title="Preferences link" open @close="closeFallback">
+  <BaseDialog v-if="fallback" :title="t('members.fallback.title')" open @close="closeFallback">
     <p class="mb-3 text-[15px] text-[var(--app-muted)]">
-      Copy this link and send it to {{ fallback.name }}. It's personal to them.
+      {{ t('members.fallback.body', { name: fallback.name }) }}
     </p>
     <input
       ref="linkField"
       type="text"
       readonly
       :value="fallback.url"
-      aria-label="Preferences link"
+      :aria-label="t('members.fallback.title')"
       class="min-h-11 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-fill)] px-3 text-[15px]"
       @focus="linkField?.select()"
     />
     <div class="mt-5 flex justify-end gap-2">
-      <BaseButton variant="plain" @click="closeFallback">Done</BaseButton>
-      <BaseButton @click="copyFromField">Copy</BaseButton>
+      <BaseButton variant="plain" @click="closeFallback">{{ t('members.fallback.done') }}</BaseButton>
+      <BaseButton @click="copyFromField">{{ t('members.fallback.copy') }}</BaseButton>
     </div>
   </BaseDialog>
 </template>

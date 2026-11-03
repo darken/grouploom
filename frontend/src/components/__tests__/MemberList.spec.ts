@@ -6,6 +6,7 @@ import { api } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { installDialogPolyfill } from './dialogPolyfill'
 
+import { applyLocale } from '@/i18n'
 import type { Member } from '@/stores/members'
 import MemberList from '../MemberList.vue'
 
@@ -315,5 +316,15 @@ describe('MemberList', () => {
       expect(useToast().toast.value?.message).toBe('Link copied. It works for 14 days.')
       wrapper.unmount()
     })
+  })
+})
+
+describe('MemberList in Japanese', () => {
+  it('translates the row actions and the paused badge', () => {
+    applyLocale('ja')
+    const wrapper = mount(MemberList, { props: { items: [member({ invitationsPaused: true })] } })
+
+    expect(wrapper.get('button[aria-haspopup=menu]').attributes('aria-label')).toBe('Ana Pérezさんの操作')
+    expect(wrapper.get('[data-paused]').text()).toBe('一時停止中')
   })
 })

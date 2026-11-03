@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -15,6 +16,7 @@ import SearchField from '@/components/SearchField.vue'
 import { useToast } from '@/composables/useToast'
 import { useMembersStore, type Member, type MemberDraft } from '@/stores/members'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = useMembersStore()
@@ -51,7 +53,7 @@ const retry = () => store.fetch({ q: q.value, page: pageIndex.value })
 
 const countLabel = computed(() => {
   const total = store.pageInfo?.totalElements ?? 0
-  return `${total} ${total === 1 ? 'member' : 'members'}`
+  return t('members.count', total)
 })
 
 // --- create / edit ---
@@ -76,12 +78,12 @@ async function save(payload: MemberDraft) {
     : await store.create(payload)
   if (!ok) return
   closeForm()
-  toast.show(current ? 'Saved' : 'Member added')
+  toast.show(current ? t('common.saveStatus.saved') : t('members.toast.added'))
 }
 
 async function saveAndAddAnother(payload: MemberDraft) {
   if (!(await store.create(payload))) return
-  toast.show(`${payload.name} added`)
+  toast.show(t('members.toast.addedNamed', { name: payload.name }))
   form.value?.reset()
 }
 
@@ -93,16 +95,15 @@ async function reloadAfterStale() {
 // --- email preferences links ---
 async function sendLink(target: Member) {
   const result = await store.sendPreferencesEmail(target.id)
-  if (result === 'queued') toast.show(`Sending link to ${target.name}`)
-  else if (result === 'cooldown') {
-    toast.show(`A link was sent to ${target.name} a moment ago. Try again in a few minutes.`)
-  } else toast.show(`Couldn't send the link to ${target.name}. Try again.`)
+  if (result === 'queued') toast.show(t('members.toast.sendingLink', { name: target.name }))
+  else if (result === 'cooldown') toast.show(t('members.toast.cooldown', { name: target.name }))
+  else toast.show(t('members.toast.sendFailed', { name: target.name }))
 }
 
 const bulkItems = computed(() => [
   {
     id: 'email-all',
-    label: 'Email preferences links to everyone',
+    label: t('members.emailAll'),
     // Unknown while searching: an empty result says nothing about the rest of the group.
     disabled: !store.loaded || (!q.value.trim() && (store.pageInfo?.totalElements ?? 0) === 0),
   },
@@ -112,26 +113,22 @@ const confirmingBulk = ref(false)
 
 // The total counts search matches, but the send goes to the whole group, so no count while searching.
 const bulkMessage = computed(() => {
-  const skipNote = 'Anyone who got a link in the last 5 minutes is skipped.'
-  if (q.value.trim()) {
-    return `Send preferences links to every member of the group, not just the search results? ${skipNote}`
-  }
-  const total = store.pageInfo?.totalElements ?? 0
-  return `Send preferences links to ${total} ${total === 1 ? 'member' : 'members'}? ${skipNote}`
+  if (q.value.trim()) return t('members.bulk.everyone')
+  return t('members.bulk.count', store.pageInfo?.totalElements ?? 0)
 })
 
 async function confirmBulk() {
   confirmingBulk.value = false
   const result = await store.sendPreferencesEmailToAll()
   if (!result) {
-    toast.show("Couldn't send the links. Try again.")
+    toast.show(t('members.toast.bulkFailed'))
     return
   }
-  const skipped = result.skipped > 0 ? ` · ${result.skipped} skipped` : ''
+  const skipped = result.skipped > 0 ? t('members.toast.skipped', { n: result.skipped }) : ''
   toast.show(
     result.queued === 0
-      ? `No links sent${skipped}`
-      : `Sending ${result.queued === 1 ? 'link' : 'links'} to ${result.queued} ${result.queued === 1 ? 'member' : 'members'}${skipped}`,
+      ? `${t('members.toast.noLinks')}${skipped}`
+      : `${t('members.toast.sendingLinks', result.queued)}${skipped}`,
   )
 }
 
@@ -151,7 +148,7 @@ async function confirmRemove() {
   removing.value = null
   if (!target) return
   if (await store.remove(target.id)) {
-    toast.show('Removed')
+    toast.show(t('members.toast.removed'))
     // The store may have stepped back a page; keep the URL in step with it.
     if (store.page !== pageIndex.value) await router.replace({ query: query(q.value, store.page) })
   }
@@ -162,29 +159,29 @@ async function confirmRemove() {
   <section>
     <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-4">
       <div class="flex items-baseline gap-3">
-        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">Members</h1>
+        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">{{ t('nav.members') }}</h1>
         <span v-if="store.pageInfo" class="text-lg text-[var(--app-muted)]">{{ countLabel }}</span>
       </div>
       <div class="order-last w-full sm:order-none sm:ml-auto sm:w-72">
         <SearchField v-model="search" />
       </div>
       <div class="ml-auto flex items-center gap-2">
-        <OverflowMenu label="More member actions" :items="bulkItems" @select="confirmingBulk = true" />
+        <OverflowMenu :label="t('members.moreActions')" :items="bulkItems" @select="confirmingBulk = true" />
         <BaseButton @click="openForm(null)">
           <svg class="size-4 sm:hidden" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
-          <span class="max-sm:sr-only">Add member</span>
+          <span class="max-sm:sr-only">{{ t('members.add') }}</span>
         </BaseButton>
       </div>
     </div>
 
     <div class="mt-8 space-y-4">
       <ErrorBanner v-if="store.error" :error="store.error">
-        <BaseButton variant="plain" @click="retry">Retry</BaseButton>
+        <BaseButton variant="plain" @click="retry">{{ t('common.retry') }}</BaseButton>
       </ErrorBanner>
 
-      <div v-if="store.loading && store.loaded" role="progressbar" aria-label="Loading" class="h-0.5 overflow-hidden rounded-full bg-[var(--app-fill)]">
+      <div v-if="store.loading && store.loaded" role="progressbar" :aria-label="t('common.loading')" class="h-0.5 overflow-hidden rounded-full bg-[var(--app-fill)]">
         <div class="h-full w-1/3 animate-pulse rounded-full bg-[var(--app-accent)]" />
       </div>
 
@@ -201,15 +198,15 @@ async function confirmRemove() {
           @remove="removing = $event"
           @send-email="sendLink"
         />
-        <EmptyState v-else-if="q.trim()" :title="`No members match &quot;${q.trim()}&quot;.`">
-          <BaseButton variant="secondary" @click="search = ''">Clear search</BaseButton>
+        <EmptyState v-else-if="q.trim()" :title="t('members.empty.noMatch', { q: q.trim() })">
+          <BaseButton variant="secondary" @click="search = ''">{{ t('common.search.clear') }}</BaseButton>
         </EmptyState>
         <EmptyState
           v-else
-          title="No members yet."
-          description="Members get event invitations by email — they don't need an account."
+          :title="t('members.empty.none')"
+          :description="t('members.empty.description')"
         >
-          <BaseButton @click="openForm(null)">Add member</BaseButton>
+          <BaseButton @click="openForm(null)">{{ t('members.add') }}</BaseButton>
         </EmptyState>
 
         <PaginationBar
@@ -222,15 +219,15 @@ async function confirmRemove() {
       </template>
     </div>
 
-    <BaseDialog :open="formOpen" :title="editing ? 'Edit member' : 'Add member'" @close="closeForm">
+    <BaseDialog :open="formOpen" :title="editing ? t('members.editTitle') : t('members.add')" @close="closeForm">
       <div
         v-if="store.stale"
         role="alert"
         class="mb-5 rounded-xl border border-[var(--app-danger)]/30 p-4 text-[15px]"
       >
-        <p class="font-medium">Changed by someone else</p>
-        <p class="text-[var(--app-muted)]">This member was updated while you were editing them.</p>
-        <BaseButton class="mt-3" variant="secondary" @click="reloadAfterStale">Reload</BaseButton>
+        <p class="font-medium">{{ t('common.staleTitle') }}</p>
+        <p class="text-[var(--app-muted)]">{{ t('members.stale') }}</p>
+        <BaseButton class="mt-3" variant="secondary" @click="reloadAfterStale">{{ t('common.reload') }}</BaseButton>
       </div>
       <MemberForm
         ref="form"
@@ -246,18 +243,18 @@ async function confirmRemove() {
 
     <ConfirmDialog
       :open="confirmingBulk"
-      title="Email preferences links?"
+      :title="t('members.bulk.title')"
       :message="bulkMessage"
-      confirm-label="Send links"
+      :confirm-label="t('members.bulk.confirm')"
       @confirm="confirmBulk"
       @cancel="confirmingBulk = false"
     />
 
     <ConfirmDialog
       :open="removing !== null"
-      :title="`Remove ${removing?.name ?? ''}?`"
-      message="They'll stop receiving invitations. This can't be undone."
-      confirm-label="Remove"
+      :title="t('members.remove.title', { name: removing?.name ?? '' })"
+      :message="t('members.remove.message')"
+      :confirm-label="t('members.remove.confirm')"
       destructive
       @confirm="confirmRemove"
       @cancel="removing = null"
