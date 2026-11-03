@@ -5,6 +5,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import MemberLayout from '@/components/MemberLayout.vue'
+import ServerWakeOverlay from '@/components/ServerWakeOverlay.vue'
 import ToastHost from '@/components/ToastHost.vue'
 import { loginLocation } from '@/router'
 import { useAuthStore } from '@/stores/auth'
@@ -41,4 +42,5 @@ watch(
     </RouterView>
   </component>
   <ToastHost />
+  <ServerWakeOverlay />
 </template>
