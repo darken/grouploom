@@ -1,0 +1,60 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Values marked `sync: false` are secrets you enter in the Render dashboard.
+services:
+  - type: web
+    name: grouploom-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/system/info
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Seeds the demo group on first start (login in the README).
+      - key: GROUPLOOM_DEMO_ENABLED
+        value: "true"
+      - key: GROUPLOOM_JWT_SECRET
+        generateValue: true
+      # Must match the static site's URL below; member email links point here.
+      - key: GROUPLOOM_PUBLIC_BASE_URL
+        value: https://grouploom.onrender.com
+      - key: GROUPLOOM_MAIL_FROM
+        sync: false
+      # Neon direct (non-pooled) endpoint, e.g.
+      # jdbc:postgresql://ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      # Brevo SMTP login and SMTP key (not the API key).
+      - key: SPRING_MAIL_USERNAME
+        sync: false
+      - key: SPRING_MAIL_PASSWORD
+        sync: false
+
+  - type: web
+    name: grouploom
+    runtime: static
+    buildCommand: cd frontend && npm install -g pnpm@12.14.0 && pnpm install --frozen-lockfile && pnpm build
+    staticPublishPath: ./frontend/dist
+    buildFilter:
+      paths:
+        - frontend/**
+    envVars:
+      - key: NODE_VERSION
+        value: "22.19.0"
+    routes:
+      # Same-origin /api keeps the SameSite=Strict refresh cookie working.
+      # Update the host if Render gives the API service a different URL.
+      - type: rewrite
+        source: /api/*
+        destination: https://grouploom-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
