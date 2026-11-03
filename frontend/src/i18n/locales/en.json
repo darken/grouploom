@@ -1,0 +1,53 @@
+{
+  "time": {
+    "allDay": "All day",
+    "minutes": "{n} min",
+    "hours": "{n} hr",
+    "halfHours": "{n}.5 hr",
+    "hoursMinutes": "{hours} hr {minutes} min",
+    "justNow": "just now",
+    "minutesAgo": "{n} min ago",
+    "hoursAgo": "{n} hr ago",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "sameDayRange": "{date} · {start} – {end}",
+    "dateTime": "{date}, {time}",
+    "multiDayRange": "{startDate}, {start} – {endDate}, {end}"
+  },
+  "notification": {
+    "kind": {
+      "INVITATION": "Invitation",
+      "REMINDER": "Reminder",
+      "CANCELLATION": "Cancellation"
+    },
+    "offset": {
+      "minutes": "{n} minute before | {n} minutes before",
+      "hours": "{n} hour before | {n} hours before",
+      "days": "{n} day before | {n} days before",
+      "weeks": "{n} week before | {n} weeks before"
+    },
+    "now": "Now",
+    "status": {
+      "scheduled": "Scheduled · {when}",
+      "sending": "Sending…",
+      "cancelled": "Cancelled",
+      "noRecipients": "No one to notify",
+      "sent": "Sent {date}",
+      "sentWithCount": "Sent {date} · {count}"
+    },
+    "recipients": "{n} recipient | {n} recipients",
+    "failed": "{n} failed"
+  },
+  "wake": {
+    "waking": {
+      "title": "Waking up the server…",
+      "body": "This demo runs on free hosting that sleeps when idle. It usually takes around two minutes, and the page continues on its own.",
+      "seconds": "{n} s"
+    },
+    "unreachable": {
+      "title": "The server isn’t responding",
+      "body": "It may still be starting, or it may be down. Try again in a moment.",
+      "retry": "Try again"
+    }
+  }
+}

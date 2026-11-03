@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
+import { applyLocale } from '@/i18n'
 import type { EventNotification } from '@/stores/eventNotifications'
 import { describeFailures, describeOffset, describeStatus, describeTiming, kindLabel } from '../notificationText'
 
@@ -103,5 +104,49 @@ describe('describeStatus', () => {
 
   it('has no failures to report when none failed', () => {
     expect(describeFailures(notification())).toBeNull()
+  })
+})
+
+describe('notification text in Japanese', () => {
+  beforeEach(() => applyLocale('ja'))
+
+  it('names each kind', () => {
+    expect(kindLabel('INVITATION')).toBe('招待')
+    expect(kindLabel('REMINDER')).toBe('リマインダー')
+    expect(kindLabel('CANCELLATION')).toBe('キャンセル通知')
+  })
+
+  it.each([
+    [15, '15分前'],
+    [120, '2時間前'],
+    [1440, '1日前'],
+    [20160, '2週間前'],
+  ])('%i minutes reads "%s"', (minutes, text) => {
+    expect(describeOffset(minutes)).toBe(text)
+  })
+
+  it('says "Now" for a notification that was due when it was created', () => {
+    const n = notification({ sendAt: '2026-10-01T12:00:10Z', localSendAt: '2026-10-01T14:00:10' })
+
+    expect(describeTiming(n)).toBe('すぐに')
+  })
+
+  it('formats a custom time in the event zone', () => {
+    expect(describeTiming(notification())).toBe('10月31日(土) 10:00')
+  })
+
+  it('describes each status', () => {
+    const sent = notification({
+      status: 'SENT',
+      sentAt: '2026-11-01T17:30:00Z',
+      recipientCount: 18,
+      delivery: { pending: 0, sent: 15, failed: 3 },
+    })
+
+    expect(describeStatus(notification())).toBe('予定 · 10月31日(土) 10:00')
+    expect(describeStatus(notification({ status: 'SENDING' }))).toBe('送信中…')
+    expect(describeStatus(notification({ status: 'CANCELLED' }))).toBe('キャンセル済み')
+    expect(describeStatus(sent)).toBe('11月1日に送信 · 受信者18人 · 失敗3件')
+    expect(describeStatus({ ...sent, recipientCount: 0, delivery: { pending: 0, sent: 0, failed: 0 } })).toBe('通知する相手がいません')
   })
 })

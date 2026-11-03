@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { applyLocale } from '@/i18n'
 import { groupByDay } from '../groupByDay'
 
 function event(id: string, localStart: string, timeZone = 'Europe/Madrid') {
@@ -61,5 +62,23 @@ describe('groupByDay', () => {
 
   it('returns no sections for no events', () => {
     expect(groupByDay([], NOW)).toEqual([])
+  })
+})
+
+describe('groupByDay in Japanese', () => {
+  it('translates Today and Tomorrow and formats the other labels in Japanese', () => {
+    applyLocale('ja')
+    const sections = groupByDay(
+      [event('a', '2026-11-02T18:00:00'), event('b', '2026-11-03T09:00:00'), event('c', '2026-11-05T09:00:00')],
+      NOW,
+    )
+
+    expect(sections.map((s) => s.label)).toEqual(['今日', '明日', '11月5日(木)'])
+  })
+
+  it('adds the year when it is not the current year', () => {
+    applyLocale('ja')
+
+    expect(groupByDay([event('a', '2027-02-14T10:00:00')], NOW)[0]!.label).toBe('2027年2月14日(日)')
   })
 })

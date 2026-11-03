@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n'
+
 export interface TimedEvent {
   start: string
   end: string
@@ -5,10 +7,10 @@ export interface TimedEvent {
 }
 
 const dateFormat = (timeZone: string) =>
-  new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short', month: 'short', day: 'numeric' })
+  new Intl.DateTimeFormat(i18n.global.locale.value, { timeZone, weekday: 'short', month: 'short', day: 'numeric' })
 
 const timeFormat = (timeZone: string) =>
-  new Intl.DateTimeFormat('en-US', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  new Intl.DateTimeFormat(i18n.global.locale.value, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 
 /** "10:00": the wall-clock time of an instant in `timeZone`, on a 24-hour clock. */
 export function formatClockTime(instant: string, timeZone: string): string {
@@ -38,10 +40,17 @@ export function formatEventTime(event: TimedEvent, viewerZone: string): string {
   const date = dateFormat(zone)
   const time = timeFormat(zone)
 
+  const { t } = i18n.global
+
   const text =
     dayKey(zone, start) === dayKey(zone, end)
-      ? `${date.format(start)} · ${time.format(start)} – ${time.format(end)}`
-      : `${date.format(start)}, ${time.format(start)} – ${date.format(end)}, ${time.format(end)}`
+      ? t('time.sameDayRange', { date: date.format(start), start: time.format(start), end: time.format(end) })
+      : t('time.multiDayRange', {
+          startDate: date.format(start),
+          start: time.format(start),
+          endDate: date.format(end),
+          end: time.format(end),
+        })
 
   return zone === viewerZone ? text : `${text} ${zoneAbbreviation(zone, end)}`
 }

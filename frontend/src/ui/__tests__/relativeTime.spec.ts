@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { applyLocale } from '@/i18n'
 import { relativeTime } from '../relativeTime'
 
 const NOW = new Date('2026-01-10T12:00:00Z')
@@ -38,5 +39,26 @@ describe('relativeTime', () => {
 
   it('uses the current time when no clock is injected', () => {
     expect(relativeTime(new Date().toISOString())).toBe('just now')
+  })
+})
+
+describe('relativeTime in Japanese', () => {
+  it.each([
+    [20, 'たった今'],
+    [5 * 60, '5分前'],
+    [2 * 3600, '2時間前'],
+    [24 * 3600, '昨日'],
+    [3 * 86400, '3日前'],
+    [7 * 86400, '1月3日'],
+  ])('shows %i seconds ago as "%s"', (seconds, expected) => {
+    applyLocale('ja')
+
+    expect(relativeTime(ago(seconds), NOW)).toBe(expected)
+  })
+
+  it('adds the year when the date is in an earlier year', () => {
+    applyLocale('ja')
+
+    expect(relativeTime('2025-12-20T12:00:00Z', NOW)).toBe('2025年12月20日')
   })
 })

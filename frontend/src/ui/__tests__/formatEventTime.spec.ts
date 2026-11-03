@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
+import { applyLocale } from '@/i18n'
 import { formatClockTime, formatEventTime } from '../formatEventTime'
 
 // 2 November 2026 is winter time in Madrid (UTC+1) and in New York (UTC-5 from the 1st).
@@ -36,6 +37,18 @@ describe('formatEventTime', () => {
     const late = { start: '2026-11-02T22:30:00Z', end: '2026-11-02T22:50:00Z', timeZone: 'Europe/Madrid' }
 
     expect(formatEventTime(late, 'Pacific/Auckland')).toContain('Mon, Nov 2 · 23:30 – 23:50')
+  })
+})
+
+describe('formatEventTime in Japanese', () => {
+  beforeEach(() => applyLocale('ja'))
+
+  it('formats a same-day range with the Japanese layout', () => {
+    expect(formatEventTime(sameDay, 'Europe/Madrid')).toBe('11月2日(月) 10:00〜12:00')
+  })
+
+  it('formats a multi-day range with both dates', () => {
+    expect(formatEventTime(multiDay, 'Europe/Madrid')).toBe('11月2日(月) 22:00〜11月3日(火) 02:00')
   })
 })
 

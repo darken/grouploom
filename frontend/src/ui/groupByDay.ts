@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n'
+
 export interface DayEvent {
   localStart: string
   timeZone: string
@@ -20,10 +22,10 @@ function addDays(key: string, days: number): string {
 
 function label(key: string, timeZone: string, now: Date): string {
   const today = todayIn(timeZone, now)
-  if (key === today) return 'Today'
-  if (key === addDays(today, 1)) return 'Tomorrow'
+  if (key === today) return i18n.global.t('time.today')
+  if (key === addDays(today, 1)) return i18n.global.t('time.tomorrow')
   const sameYear = key.slice(0, 4) === today.slice(0, 4)
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(i18n.global.locale.value, {
     timeZone: 'UTC',
     weekday: 'short',
     month: 'short',
