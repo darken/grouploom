@@ -63,6 +63,19 @@ class MeControllerTest {
 	}
 
 	@Test
+	void me_withoutToken_andJapaneseBrowser_returnsAJapaneseDetail() throws Exception {
+		mockMvc.perform(get("/api/me").servletPath("/api").header("Accept-Language", "ja"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.detail").value("認証が必要です。ログインしてください。"));
+	}
+
+	@Test
+	void me_withoutToken_andNoAcceptLanguage_returnsTheEnglishDetail() throws Exception {
+		mockMvc.perform(get("/api/me").servletPath("/api"))
+			.andExpect(jsonPath("$.detail").value("Authentication is required."));
+	}
+
+	@Test
 	void me_whenUserWasDeleted_returns404() throws Exception {
 		given(service.me(any())).willThrow(new NotFoundException(ErrorCode.USER_NOT_FOUND));
 

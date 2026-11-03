@@ -1,5 +1,6 @@
 package io.grouploom.backend.config;
 
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -10,6 +11,9 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.servlet.LocaleResolver;
+
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 @Import(JwtConfig.class)
@@ -18,8 +22,9 @@ public class SecurityConfig {
 	// Stateless bearer-token API, so CSRF protection is disabled: there is no session cookie to ride on.
 	// The only cookie (gl_refresh) is HttpOnly, SameSite=Strict and scoped to /api/auth.
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
-		ProblemDetailSecurityHandlers handlers = new ProblemDetailSecurityHandlers();
+	SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder, LocaleResolver localeResolver,
+			MessageSource messages, JsonMapper json) throws Exception {
+		ProblemDetailSecurityHandlers handlers = new ProblemDetailSecurityHandlers(localeResolver, messages, json);
 		http
 			.csrf(AbstractHttpConfigurer::disable)
 			.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
