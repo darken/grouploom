@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import io.grouploom.backend.config.JwtConfig;
 import io.grouploom.backend.config.SecurityConfig;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.eventtype.EventTypeColor;
@@ -100,7 +101,7 @@ class PublicPreferenceControllerTest {
 
 	@Test
 	void get_withInvalidToken_returns401Invalid() throws Exception {
-		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException("member-token.invalid"));
+		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 
 		mockMvc.perform(withToken(get("/api/public/preferences")))
 			.andExpect(status().isUnauthorized())
@@ -110,7 +111,7 @@ class PublicPreferenceControllerTest {
 
 	@Test
 	void get_withExpiredToken_returns401Expired() throws Exception {
-		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException("member-token.expired"));
+		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_EXPIRED));
 
 		mockMvc.perform(withToken(get("/api/public/preferences")))
 			.andExpect(status().isUnauthorized())
@@ -155,7 +156,7 @@ class PublicPreferenceControllerTest {
 
 	@Test
 	void put_withExpiredToken_returns401Expired() throws Exception {
-		given(service.update(eq(TOKEN), any())).willThrow(new InvalidMemberTokenException("member-token.expired"));
+		given(service.update(eq(TOKEN), any())).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_EXPIRED));
 
 		mockMvc.perform(withToken(put("/api/public/preferences")).contentType(MediaType.APPLICATION_JSON).content(VALID_PUT))
 			.andExpect(status().isUnauthorized())
@@ -202,8 +203,7 @@ class PublicPreferenceControllerTest {
 
 	@Test
 	void put_withUnknownEventType_returns400WithCode() throws Exception {
-		given(service.update(eq(TOKEN), any())).willThrow(new io.grouploom.backend.error.BadRequestException(
-				"Unknown event type.", "preference.unknown-event-type", "eventTypes"));
+		given(service.update(eq(TOKEN), any())).willThrow(new io.grouploom.backend.error.BadRequestException(io.grouploom.backend.error.ErrorCode.PREFERENCE_UNKNOWN_EVENT_TYPE, "eventTypes"));
 
 		mockMvc.perform(withToken(put("/api/public/preferences")).contentType(MediaType.APPLICATION_JSON).content(VALID_PUT))
 			.andExpect(status().isBadRequest())

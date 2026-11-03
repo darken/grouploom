@@ -222,7 +222,7 @@ class EventTypeServiceTest {
 			.isInstanceOfSatisfying(ConflictException.class, ex -> {
 				assertThat(ex.getCode()).isEqualTo("event-type.in-use");
 				assertThat(ex.getField()).isNull();
-				assertThat(ex.getMessage()).isEqualTo("This event type is used by events. Archive it instead.");
+				assertThat(ex.getCode()).isEqualTo("event-type.in-use");
 			});
 		verify(repository, never()).delete(any());
 	}

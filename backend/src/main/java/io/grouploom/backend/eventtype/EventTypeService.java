@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.event.EventRepository;
 import io.grouploom.backend.eventtype.dto.CreateEventTypeRequest;
@@ -99,7 +100,7 @@ public class EventTypeService {
 	private EventType find(CurrentUser current, UUID id) {
 		// Scoped by group: another group's id is indistinguishable from a missing one.
 		return eventTypes.findByIdAndGroupId(id, current.groupId())
-			.orElseThrow(() -> new NotFoundException("Event type not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.EVENT_TYPE_NOT_FOUND));
 	}
 
 	private EventType flush(EventType eventType) {
@@ -116,16 +117,15 @@ public class EventTypeService {
 	}
 
 	private static ConflictException nameTaken() {
-		return new ConflictException("An event type with this name already exists.", "event-type.name-taken", "name");
+		return new ConflictException(ErrorCode.EVENT_TYPE_NAME_TAKEN, "name");
 	}
 
 	private static ConflictException inUse() {
-		return new ConflictException("This event type is used by events. Archive it instead.", "event-type.in-use", null);
+		return new ConflictException(ErrorCode.EVENT_TYPE_IN_USE);
 	}
 
 	private static ConflictException stale() {
-		return new ConflictException("This event type was changed by someone else. Reload and try again.",
-				"event-type.stale", null);
+		return new ConflictException(ErrorCode.EVENT_TYPE_STALE);
 	}
 
 }

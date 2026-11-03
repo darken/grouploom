@@ -21,6 +21,7 @@ import io.grouploom.backend.email.EmailKind;
 import io.grouploom.backend.email.EmailOutboxRepository;
 import io.grouploom.backend.email.EmailStatus;
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.event.Event;
@@ -76,8 +77,7 @@ public class EventNotificationService {
 		EmailKind emailKind = switch (kind) {
 			case INVITATION -> EmailKind.EVENT_INVITATION;
 			case REMINDER -> EmailKind.EVENT_REMINDER;
-			case CANCELLATION -> throw new BadRequestException("Only invitations and reminders have an audience preview.",
-					"notification.invalid-kind", "kind");
+			case CANCELLATION -> throw new BadRequestException(ErrorCode.NOTIFICATION_INVALID_KIND_PREVIEW, "kind");
 		};
 		return new AudienceResponse(
 				outbox.countEligibleRecipients(current.groupId(), event.getEventType().getId(), event.getId(), emailKind.name()),
@@ -88,19 +88,17 @@ public class EventNotificationService {
 	public EventNotificationResponse schedule(CurrentUser current, UUID eventId, ScheduleNotificationRequest request) {
 		Event event = findEvent(current, eventId);
 		if (request.kind() == NotificationKind.CANCELLATION) {
-			throw new BadRequestException("Only invitations and reminders can be scheduled.", "notification.invalid-kind",
-					"kind");
+			throw new BadRequestException(ErrorCode.NOTIFICATION_INVALID_KIND, "kind");
 		}
 		if (event.isCancelled()) {
-			throw new ConflictException("This event is cancelled.", "event.cancelled", null);
+			throw new ConflictException(ErrorCode.EVENT_CANCELLED);
 		}
 		Instant now = clock.instant();
 		if (!event.getStartsAt().isAfter(now)) {
-			throw new ConflictException("This event has already started.", "event.started", null);
+			throw new ConflictException(ErrorCode.EVENT_STARTED);
 		}
 		if (notifications.countByEventIdAndStatus(event.getId(), NotificationStatus.SCHEDULED) >= MAX_SCHEDULED) {
-			throw new ConflictException("An event can have at most " + MAX_SCHEDULED + " scheduled notifications.",
-					"notification.limit", null);
+			throw new ConflictException(ErrorCode.NOTIFICATION_LIMIT, null, MAX_SCHEDULED);
 		}
 
 		Instant sendAt;
@@ -128,7 +126,7 @@ public class EventNotificationService {
 	public void unschedule(CurrentUser current, UUID eventId, UUID notificationId) {
 		EventNotification notification = notifications
 			.findByIdAndEventIdAndGroupId(notificationId, eventId, current.groupId())
-			.orElseThrow(() -> new NotFoundException("Notification not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.NOTIFICATION_NOT_FOUND));
 		if (notification.getStatus() != NotificationStatus.SCHEDULED) {
 			throw alreadySent();
 		}
@@ -151,9 +149,7 @@ public class EventNotificationService {
 				n.reschedule(newStart, now);
 			}
 			else if (!n.getSendAt().isBefore(newStart)) {
-				throw new BadRequestException(
-						"A notification is scheduled for after the new start. Unschedule it first.",
-						"event.notification-after-start", "localStart");
+				throw new BadRequestException(ErrorCode.EVENT_NOTIFICATION_AFTER_START, "localStart");
 			}
 		}
 	}
@@ -178,15 +174,14 @@ public class EventNotificationService {
 
 	private static void validateSendAt(Instant sendAt, Event event, Instant now, String field) {
 		if (sendAt.isBefore(now.minus(PAST_ALLOWANCE)) || !sendAt.isBefore(event.getStartsAt())) {
-			throw new BadRequestException("The send time must be in the future and before the event starts.",
-					"notification.send-at-invalid", field);
+			throw new BadRequestException(ErrorCode.NOTIFICATION_SEND_AT_INVALID, field);
 		}
 	}
 
 	private Event findEvent(CurrentUser current, UUID eventId) {
 		// Scoped by group: another group's id is indistinguishable from a missing one.
 		return events.findByIdAndGroupId(eventId, current.groupId())
-			.orElseThrow(() -> new NotFoundException("Event not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 	}
 
 	private static String clean(String message) {
@@ -194,7 +189,7 @@ public class EventNotificationService {
 	}
 
 	private static ConflictException alreadySent() {
-		return new ConflictException("This notification has already been sent.", "notification.already-sent", null);
+		return new ConflictException(ErrorCode.NOTIFICATION_ALREADY_SENT);
 	}
 
 	private static DeliveryCounts delivery(Map<EmailStatus, Long> counts) {

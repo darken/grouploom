@@ -1,19 +1,13 @@
 package io.grouploom.backend.error;
 
-public class BadRequestException extends RuntimeException {
+public class BadRequestException extends DomainException {
 
-	private final String code;
 	private final String field;
 
-	/** {@code code} is a stable machine-readable key; {@code field} names the input the problem belongs to. */
-	public BadRequestException(String message, String code, String field) {
-		super(message);
-		this.code = code;
+	/** {@code field} names the input the problem belongs to, or is null when no single input is at fault. */
+	public BadRequestException(ErrorCode errorCode, String field, Object... args) {
+		super(errorCode, args);
 		this.field = field;
-	}
-
-	public String getCode() {
-		return code;
 	}
 
 	public String getField() {

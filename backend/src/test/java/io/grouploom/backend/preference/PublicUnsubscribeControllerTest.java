@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.grouploom.backend.config.JwtConfig;
 import io.grouploom.backend.config.SecurityConfig;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 
@@ -48,7 +49,7 @@ class PublicUnsubscribeControllerTest {
 
 	@Test
 	void unsubscribe_withAnInvalidToken_returns401WithCode() throws Exception {
-		doThrow(new InvalidMemberTokenException(InvalidMemberTokenException.INVALID)).when(service).unsubscribe("bad");
+		doThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID)).when(service).unsubscribe("bad");
 
 		mockMvc.perform(post("/api/public/unsubscribe").servletPath("/api").queryParam("t", "bad"))
 			.andExpect(status().isUnauthorized())

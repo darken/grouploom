@@ -28,6 +28,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
@@ -146,7 +147,7 @@ class PreferenceServiceTest {
 	@Test
 	void get_withInvalidToken_propagatesTheException() {
 		given(tokens.resolve("bad", MemberTokenPurpose.PREFERENCES))
-			.willThrow(new InvalidMemberTokenException("member-token.invalid"));
+			.willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 
 		assertThatThrownBy(() -> service.get("bad")).isInstanceOf(InvalidMemberTokenException.class);
 	}
@@ -260,7 +261,7 @@ class PreferenceServiceTest {
 	@Test
 	void update_withInvalidToken_changesNothing() {
 		given(tokens.resolve("bad", MemberTokenPurpose.PREFERENCES))
-			.willThrow(new InvalidMemberTokenException("member-token.invalid"));
+			.willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 
 		assertThatThrownBy(() -> service.update("bad", request(true)))
 			.isInstanceOf(InvalidMemberTokenException.class);

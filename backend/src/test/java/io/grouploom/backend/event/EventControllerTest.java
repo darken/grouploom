@@ -39,6 +39,7 @@ import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.config.WebConfig;
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
@@ -208,7 +209,7 @@ class EventControllerTest {
 
 	@Test
 	void get_withEventFromAnotherGroup_returns404ProblemJson() throws Exception {
-		given(service.get(any(), eq(ID))).willThrow(new NotFoundException("Event not found."));
+		given(service.get(any(), eq(ID))).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(get("/api/events/" + ID)))
 			.andExpect(status().isNotFound())
@@ -289,7 +290,7 @@ class EventControllerTest {
 
 	@Test
 	void create_withServiceBadRequest_returns400WithCodeAndFieldErrors() throws Exception {
-		given(service.create(any(), any())).willThrow(new BadRequestException("The start can't be in the past.", "event.start-in-past", "localStart"));
+		given(service.create(any(), any())).willThrow(new BadRequestException(ErrorCode.EVENT_START_IN_PAST, "localStart"));
 
 		mockMvc.perform(api(post("/api/events")).contentType(MediaType.APPLICATION_JSON).content(body("version=<drop>")))
 			.andExpect(status().isBadRequest())
@@ -323,7 +324,7 @@ class EventControllerTest {
 
 	@Test
 	void update_withStaleVersion_returns409WithStaleCode() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException("stale", "event.stale", null));
+		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException(ErrorCode.EVENT_STALE));
 
 		mockMvc.perform(api(put("/api/events/" + ID)).contentType(MediaType.APPLICATION_JSON).content(body("")))
 			.andExpect(status().isConflict())
@@ -333,7 +334,7 @@ class EventControllerTest {
 
 	@Test
 	void update_withEventFromAnotherGroup_returns404() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new NotFoundException("Event not found."));
+		given(service.update(any(), eq(ID), any())).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(put("/api/events/" + ID)).contentType(MediaType.APPLICATION_JSON).content(body("")))
 			.andExpect(status().isNotFound());
@@ -356,7 +357,7 @@ class EventControllerTest {
 
 	@Test
 	void delete_withEventFromAnotherGroup_returns404() throws Exception {
-		org.mockito.Mockito.doThrow(new NotFoundException("Event not found.")).when(service).delete(any(), eq(ID));
+		org.mockito.Mockito.doThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND)).when(service).delete(any(), eq(ID));
 
 		mockMvc.perform(api(delete("/api/events/" + ID))).andExpect(status().isNotFound());
 	}
@@ -400,7 +401,7 @@ class EventControllerTest {
 
 	@Test
 	void cancel_whenAlreadyCancelled_returns409() throws Exception {
-		given(service.cancel(any(), eq(ID), any())).willThrow(new ConflictException("no", "event.cancelled", null));
+		given(service.cancel(any(), eq(ID), any())).willThrow(new ConflictException(ErrorCode.EVENT_CANCELLED));
 
 		mockMvc.perform(api(post("/api/events/" + ID + "/cancel")))
 			.andExpect(status().isConflict())
@@ -409,7 +410,7 @@ class EventControllerTest {
 
 	@Test
 	void cancel_withEventFromAnotherGroup_returns404() throws Exception {
-		given(service.cancel(any(), eq(ID), any())).willThrow(new NotFoundException("Event not found."));
+		given(service.cancel(any(), eq(ID), any())).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(post("/api/events/" + ID + "/cancel"))).andExpect(status().isNotFound());
 	}

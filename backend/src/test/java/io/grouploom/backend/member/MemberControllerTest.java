@@ -42,6 +42,7 @@ import io.grouploom.backend.email.dto.BulkEmailResult;
 import io.grouploom.backend.email.dto.EmailDeliveryStatus;
 import io.grouploom.backend.email.dto.EmailQueuedResponse;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.error.TooManyRequestsException;
@@ -180,7 +181,7 @@ class MemberControllerTest {
 
 	@Test
 	void get_withMemberFromAnotherGroup_returns404ProblemJson() throws Exception {
-		given(service.get(any(), eq(ID))).willThrow(new NotFoundException("Member not found."));
+		given(service.get(any(), eq(ID))).willThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
 		mockMvc.perform(api(get("/api/members/" + ID)))
 			.andExpect(status().isNotFound())
@@ -271,7 +272,7 @@ class MemberControllerTest {
 
 	@Test
 	void create_withDuplicateEmail_returns409WithCodeAndField() throws Exception {
-		given(service.create(any(), any())).willThrow(new ConflictException("taken", "member.email-taken", "email"));
+		given(service.create(any(), any())).willThrow(new ConflictException(ErrorCode.MEMBER_EMAIL_TAKEN, "email"));
 
 		mockMvc.perform(api(post("/api/members")).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE))
 			.andExpect(status().isConflict())
@@ -313,7 +314,7 @@ class MemberControllerTest {
 
 	@Test
 	void update_withStaleVersion_returns409WithStaleCode() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException("stale", "member.stale", null));
+		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException(ErrorCode.MEMBER_STALE));
 
 		mockMvc.perform(api(put("/api/members/" + ID)).contentType(MediaType.APPLICATION_JSON).content(VALID_UPDATE))
 			.andExpect(status().isConflict())
@@ -323,7 +324,7 @@ class MemberControllerTest {
 
 	@Test
 	void update_withDuplicateEmail_returns409WithCodeAndField() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException("taken", "member.email-taken", "email"));
+		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException(ErrorCode.MEMBER_EMAIL_TAKEN, "email"));
 
 		mockMvc.perform(api(put("/api/members/" + ID)).contentType(MediaType.APPLICATION_JSON).content(VALID_UPDATE))
 			.andExpect(status().isConflict())
@@ -333,7 +334,7 @@ class MemberControllerTest {
 
 	@Test
 	void update_withMemberFromAnotherGroup_returns404() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new NotFoundException("Member not found."));
+		given(service.update(any(), eq(ID), any())).willThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
 		mockMvc.perform(api(put("/api/members/" + ID)).contentType(MediaType.APPLICATION_JSON).content(VALID_UPDATE))
 			.andExpect(status().isNotFound());
@@ -356,7 +357,7 @@ class MemberControllerTest {
 
 	@Test
 	void delete_withMemberFromAnotherGroup_returns404() throws Exception {
-		org.mockito.Mockito.doThrow(new NotFoundException("Member not found.")).when(service).delete(any(), eq(ID));
+		org.mockito.Mockito.doThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND)).when(service).delete(any(), eq(ID));
 
 		mockMvc.perform(api(delete("/api/members/" + ID))).andExpect(status().isNotFound());
 	}
@@ -392,7 +393,7 @@ class MemberControllerTest {
 
 	@Test
 	void createPreferencesLink_withMemberFromAnotherGroup_returns404() throws Exception {
-		given(service.createPreferencesLink(any(), eq(ID))).willThrow(new NotFoundException("Member not found."));
+		given(service.createPreferencesLink(any(), eq(ID))).willThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
 		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-link")))
 			.andExpect(status().isNotFound())
@@ -443,7 +444,7 @@ class MemberControllerTest {
 
 	@Test
 	void sendPreferencesEmail_withMemberFromAnotherGroup_returns404() throws Exception {
-		given(service.sendPreferencesEmail(any(), eq(ID))).willThrow(new NotFoundException("Member not found."));
+		given(service.sendPreferencesEmail(any(), eq(ID))).willThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
 		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-email")))
 			.andExpect(status().isNotFound())
@@ -453,7 +454,7 @@ class MemberControllerTest {
 	@Test
 	void sendPreferencesEmail_withinTheCooldown_returns429WithCode() throws Exception {
 		given(service.sendPreferencesEmail(any(), eq(ID)))
-			.willThrow(new TooManyRequestsException("A link was sent a moment ago.", "email.cooldown"));
+			.willThrow(new TooManyRequestsException(ErrorCode.EMAIL_COOLDOWN));
 
 		mockMvc.perform(api(post("/api/members/" + ID + "/preferences-email")))
 			.andExpect(status().isTooManyRequests())

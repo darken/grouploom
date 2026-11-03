@@ -32,6 +32,7 @@ import io.grouploom.backend.attendance.dto.PublicEvent;
 import io.grouploom.backend.config.JwtConfig;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.eventtype.EventTypeColor;
@@ -104,7 +105,7 @@ class PublicAttendanceControllerTest {
 
 	@Test
 	void get_withInvalidToken_returns401Invalid() throws Exception {
-		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException("member-token.invalid"));
+		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 
 		mockMvc.perform(withToken(get(URL)))
 			.andExpect(status().isUnauthorized())
@@ -113,7 +114,7 @@ class PublicAttendanceControllerTest {
 
 	@Test
 	void get_withExpiredToken_returns401Expired() throws Exception {
-		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException("member-token.expired"));
+		given(service.get(TOKEN)).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_EXPIRED));
 
 		mockMvc.perform(withToken(get(URL)))
 			.andExpect(status().isUnauthorized())
@@ -153,7 +154,7 @@ class PublicAttendanceControllerTest {
 
 	@Test
 	void put_withExpiredToken_returns401Expired() throws Exception {
-		given(service.answer(eq(TOKEN), any())).willThrow(new InvalidMemberTokenException("member-token.expired"));
+		given(service.answer(eq(TOKEN), any())).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_EXPIRED));
 
 		mockMvc.perform(withToken(put(URL)).contentType(MediaType.APPLICATION_JSON).content(VALID_PUT))
 			.andExpect(status().isUnauthorized())
@@ -197,7 +198,7 @@ class PublicAttendanceControllerTest {
 	@Test
 	void put_whenRepliesAreClosed_returns409WithCode() throws Exception {
 		given(service.answer(eq(TOKEN), any()))
-			.willThrow(new ConflictException("Replies are closed for this event.", "attendance.closed", null));
+			.willThrow(new ConflictException(ErrorCode.ATTENDANCE_CLOSED));
 
 		mockMvc.perform(withToken(put(URL)).contentType(MediaType.APPLICATION_JSON).content(VALID_PUT))
 			.andExpect(status().isConflict())

@@ -24,6 +24,7 @@ import io.grouploom.backend.email.dto.BulkEmailResult;
 import io.grouploom.backend.email.dto.EmailDeliveryStatus;
 import io.grouploom.backend.email.dto.EmailQueuedResponse;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.error.TooManyRequestsException;
 import io.grouploom.backend.group.GroupRepository;
@@ -121,8 +122,7 @@ public class MemberService {
 	public EmailQueuedResponse sendPreferencesEmail(CurrentUser current, UUID id) {
 		Member member = find(current, id);
 		if (emailOutbox.isWithinCooldown(member.getId())) {
-			throw new TooManyRequestsException("A link was sent to this member a moment ago. Try again in a few minutes.",
-					"email.cooldown");
+			throw new TooManyRequestsException(ErrorCode.EMAIL_COOLDOWN);
 		}
 		EmailOutboxEntry entry = emailOutbox.enqueuePreferencesLink(member, current.userId());
 		return new EmailQueuedResponse(entry.getCreatedAt());
@@ -161,7 +161,7 @@ public class MemberService {
 	private Member find(CurrentUser current, UUID id) {
 		// Scoped by group: another group's id is indistinguishable from a missing one.
 		return members.findByIdAndGroupId(id, current.groupId())
-			.orElseThrow(() -> new NotFoundException("Member not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 	}
 
 	private Member flush(Member member) {
@@ -191,12 +191,11 @@ public class MemberService {
 	}
 
 	private static ConflictException emailTaken() {
-		return new ConflictException("A member with this email already exists.", "member.email-taken", "email");
+		return new ConflictException(ErrorCode.MEMBER_EMAIL_TAKEN, "email");
 	}
 
 	private static ConflictException stale() {
-		return new ConflictException("This member was changed by someone else. Reload and try again.",
-				"member.stale", null);
+		return new ConflictException(ErrorCode.MEMBER_STALE);
 	}
 
 }

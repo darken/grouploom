@@ -2,6 +2,8 @@ package io.grouploom.backend.error;
 
 import java.util.List;
 
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -24,22 +26,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	public record FieldError(String field, String message) {
 	}
 
+	private final MessageSource messages;
+
+	GlobalExceptionHandler(MessageSource messages) {
+		this.messages = messages;
+	}
+
 	@ExceptionHandler(NotFoundException.class)
 	ProblemDetail handleNotFound(NotFoundException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		return problem(HttpStatus.NOT_FOUND, ex);
 	}
 
 	@ExceptionHandler(ForbiddenException.class)
 	ProblemDetail handleForbidden(ForbiddenException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		return problem(HttpStatus.FORBIDDEN, ex);
 	}
 
 	@ExceptionHandler(ConflictException.class)
 	ProblemDetail handleConflict(ConflictException ex) {
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-		if (ex.getCode() != null) {
-			problem.setProperty("code", ex.getCode());
-		}
+		ProblemDetail problem = problem(HttpStatus.CONFLICT, ex);
 		if (ex.getField() != null) {
 			problem.setProperty("field", ex.getField());
 		}
@@ -49,12 +54,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	// Same shape as Bean Validation errors (`errors[{field, message}]`), plus a stable `code`.
 	@ExceptionHandler(BadRequestException.class)
 	ProblemDetail handleBadRequest(BadRequestException ex) {
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-		if (ex.getCode() != null) {
-			problem.setProperty("code", ex.getCode());
-		}
+		ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, ex);
 		if (ex.getField() != null) {
-			problem.setProperty("errors", List.of(new FieldError(ex.getField(), ex.getMessage())));
+			problem.setProperty("errors", List.of(new FieldError(ex.getField(), problem.getDetail())));
 		}
 		return problem;
 	}
@@ -65,23 +67,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid sort property.");
 	}
 
-	@ExceptionHandler({ InvalidCredentialsException.class, InvalidRefreshTokenException.class })
-	ProblemDetail handleUnauthorized(RuntimeException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+	@ExceptionHandler({ InvalidCredentialsException.class, InvalidRefreshTokenException.class,
+			InvalidMemberTokenException.class })
+	ProblemDetail handleUnauthorized(DomainException ex) {
+		return problem(HttpStatus.UNAUTHORIZED, ex);
 	}
 
 	@ExceptionHandler(TooManyRequestsException.class)
 	ProblemDetail handleTooManyRequests(TooManyRequestsException ex) {
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+		return problem(HttpStatus.TOO_MANY_REQUESTS, ex);
+	}
+
+	private ProblemDetail problem(HttpStatus status, DomainException ex) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status,
+				message(ex.getErrorCode().messageKey(), ex.getArgs()));
 		problem.setProperty("code", ex.getCode());
 		return problem;
 	}
 
-	@ExceptionHandler(InvalidMemberTokenException.class)
-	ProblemDetail handleInvalidMemberToken(InvalidMemberTokenException ex) {
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
-		problem.setProperty("code", ex.getCode());
-		return problem;
+	/** The text in the request's language: Spring's locale resolver has set it for the current request. */
+	private String message(String key, Object... args) {
+		return messages.getMessage(key, args, LocaleContextHolder.getLocale());
 	}
 
 	@Override

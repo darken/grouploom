@@ -1,9 +1,9 @@
 package io.grouploom.backend.error;
 
-public class InvalidCredentialsException extends RuntimeException {
+public class InvalidCredentialsException extends DomainException {
 
 	public InvalidCredentialsException() {
-		super("Email or password is incorrect.");
+		super(ErrorCode.AUTH_INVALID_CREDENTIALS);
 	}
 
 }

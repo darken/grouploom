@@ -41,6 +41,7 @@ import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.config.WebConfig;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 
@@ -98,7 +99,7 @@ class AttendanceControllerTest {
 
 	@Test
 	void summary_forAnotherGroupsEvent_returns404() throws Exception {
-		given(service.summary(any(), eq(EVENT_ID))).willThrow(new NotFoundException("Event not found."));
+		given(service.summary(any(), eq(EVENT_ID))).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(get(BASE + "/summary")))
 			.andExpect(status().isNotFound())
@@ -174,7 +175,7 @@ class AttendanceControllerTest {
 
 	@Test
 	void list_forAnotherGroupsEvent_returns404() throws Exception {
-		given(service.list(any(), eq(EVENT_ID), any(), any())).willThrow(new NotFoundException("Event not found."));
+		given(service.list(any(), eq(EVENT_ID), any(), any())).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(get(BASE))).andExpect(status().isNotFound());
 	}
@@ -219,7 +220,7 @@ class AttendanceControllerTest {
 
 	@Test
 	void set_forAnotherGroupsMember_returns404() throws Exception {
-		given(service.set(any(), eq(EVENT_ID), eq(MEMBER_ID), any())).willThrow(new NotFoundException("Member not found."));
+		given(service.set(any(), eq(EVENT_ID), eq(MEMBER_ID), any())).willThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
 		mockMvc.perform(api(put(BASE + "/" + MEMBER_ID)).contentType(MediaType.APPLICATION_JSON).content("{\"response\":\"GOING\"}"))
 			.andExpect(status().isNotFound());
@@ -228,7 +229,7 @@ class AttendanceControllerTest {
 	@Test
 	void set_forACancelledEvent_returns409WithCode() throws Exception {
 		given(service.set(any(), eq(EVENT_ID), eq(MEMBER_ID), any()))
-			.willThrow(new ConflictException("This event is cancelled.", "attendance.closed", null));
+			.willThrow(new ConflictException(ErrorCode.ATTENDANCE_EVENT_CANCELLED));
 
 		mockMvc.perform(api(put(BASE + "/" + MEMBER_ID)).contentType(MediaType.APPLICATION_JSON).content("{\"response\":\"GOING\"}"))
 			.andExpect(status().isConflict())
@@ -252,14 +253,14 @@ class AttendanceControllerTest {
 
 	@Test
 	void clear_forAnotherGroupsMember_returns404() throws Exception {
-		org.mockito.Mockito.doThrow(new NotFoundException("Member not found.")).when(service).clear(any(), eq(EVENT_ID), eq(MEMBER_ID));
+		org.mockito.Mockito.doThrow(new NotFoundException(ErrorCode.MEMBER_NOT_FOUND)).when(service).clear(any(), eq(EVENT_ID), eq(MEMBER_ID));
 
 		mockMvc.perform(api(delete(BASE + "/" + MEMBER_ID))).andExpect(status().isNotFound());
 	}
 
 	@Test
 	void clear_forACancelledEvent_returns409WithCode() throws Exception {
-		org.mockito.Mockito.doThrow(new ConflictException("This event is cancelled.", "attendance.closed", null))
+		org.mockito.Mockito.doThrow(new ConflictException(ErrorCode.ATTENDANCE_EVENT_CANCELLED))
 			.when(service).clear(any(), eq(EVENT_ID), eq(MEMBER_ID));
 
 		mockMvc.perform(api(delete(BASE + "/" + MEMBER_ID)))

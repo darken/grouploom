@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.Language;
@@ -88,7 +89,7 @@ class UnsubscribeServiceTest {
 	@Test
 	void unsubscribe_withATokenOfAnotherPurpose_isInvalidAndChangesNothing() {
 		given(tokens.resolve("preferences-token", MemberTokenPurpose.UNSUBSCRIBE))
-			.willThrow(new InvalidMemberTokenException(InvalidMemberTokenException.INVALID));
+			.willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 
 		assertThatThrownBy(() -> service.unsubscribe("preferences-token")).isInstanceOf(InvalidMemberTokenException.class);
 

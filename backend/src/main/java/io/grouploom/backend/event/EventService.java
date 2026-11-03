@@ -23,6 +23,7 @@ import io.grouploom.backend.attendance.AttendanceRepository;
 import io.grouploom.backend.attendance.GoingCount;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.event.dto.CancelEventRequest;
@@ -84,7 +85,7 @@ public class EventService {
 		EventType type = resolveNewType(current, request.eventTypeId());
 		Times times = times(request.localStart(), request.localEnd(), request.timeZone());
 		if (times.start().isBefore(clock.instant().minus(PAST_ALLOWANCE))) {
-			throw new BadRequestException("The start can't be in the past.", "event.start-in-past", "localStart");
+			throw new BadRequestException(ErrorCode.EVENT_START_IN_PAST, "localStart");
 		}
 		Event created = new Event(groups.getReferenceById(current.groupId()), type, request.title().trim(),
 				request.description(), request.location(), times.start(), times.end(), request.timeZone(),
@@ -106,7 +107,7 @@ public class EventService {
 		Times times = times(request.localStart(), request.localEnd(), request.timeZone());
 		// Past events can still be corrected; the past check only applies when the start moves.
 		if (!times.start().equals(event.getStartsAt()) && times.start().isBefore(clock.instant().minus(PAST_ALLOWANCE))) {
-			throw new BadRequestException("The start can't be in the past.", "event.start-in-past", "localStart");
+			throw new BadRequestException(ErrorCode.EVENT_START_IN_PAST, "localStart");
 		}
 		boolean startMoved = !times.start().equals(event.getStartsAt());
 		event.update(type, request.title().trim(), request.description(), request.location(), times.start(),
@@ -123,7 +124,7 @@ public class EventService {
 		requireNotCancelled(event);
 		Instant now = clock.instant();
 		if (!event.getEndsAt().isAfter(now)) {
-			throw new ConflictException("This event has already ended.", "event.ended", null);
+			throw new ConflictException(ErrorCode.EVENT_ENDED);
 		}
 		String message = request == null || request.message() == null || request.message().isBlank() ? null
 				: request.message().trim();
@@ -149,7 +150,7 @@ public class EventService {
 
 	private static void requireNotCancelled(Event event) {
 		if (event.isCancelled()) {
-			throw new ConflictException("This event is cancelled.", "event.cancelled", null);
+			throw new ConflictException(ErrorCode.EVENT_CANCELLED);
 		}
 	}
 
@@ -157,8 +158,7 @@ public class EventService {
 	public void delete(CurrentUser current, UUID id) {
 		Event event = find(current, id);
 		if (notifications.existsByEventIdAndStatus(event.getId(), NotificationStatus.SENT)) {
-			throw new ConflictException("Members were notified about this event. Cancel it instead.",
-					"event.has-notifications", null);
+			throw new ConflictException(ErrorCode.EVENT_HAS_NOTIFICATIONS);
 		}
 		events.delete(event);
 	}
@@ -172,10 +172,10 @@ public class EventService {
 		Instant start = ZonedDateTime.ofLocal(localStart, zone, null).toInstant();
 		Instant end = ZonedDateTime.ofLocal(localEnd, zone, null).toInstant();
 		if (!end.isAfter(start)) {
-			throw new BadRequestException("The end must be after the start.", "event.end-before-start", "localEnd");
+			throw new BadRequestException(ErrorCode.EVENT_END_BEFORE_START, "localEnd");
 		}
 		if (Duration.between(start, end).compareTo(MAX_DURATION) > 0) {
-			throw new BadRequestException("An event can last at most 7 days.", "event.too-long", "localEnd");
+			throw new BadRequestException(ErrorCode.EVENT_TOO_LONG, "localEnd");
 		}
 		return new Times(start, end);
 	}
@@ -184,15 +184,14 @@ public class EventService {
 		EventType type = eventTypes.findByIdAndGroupId(eventTypeId, current.groupId())
 			.orElseThrow(EventService::typeNotFound);
 		if (type.isArchived()) {
-			throw new BadRequestException("This event type is archived. Choose another one.",
-					"event.event-type-archived", "eventTypeId");
+			throw new BadRequestException(ErrorCode.EVENT_EVENT_TYPE_ARCHIVED, "eventTypeId");
 		}
 		return type;
 	}
 
 	private Event find(CurrentUser current, UUID id) {
 		// Scoped by group: another group's id is indistinguishable from a missing one.
-		return events.findByIdAndGroupId(id, current.groupId()).orElseThrow(() -> new NotFoundException("Event not found."));
+		return events.findByIdAndGroupId(id, current.groupId()).orElseThrow(() -> new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 	}
 
 	private Event flush(Event event) {
@@ -209,11 +208,11 @@ public class EventService {
 	}
 
 	private static BadRequestException typeNotFound() {
-		return new BadRequestException("Event type not found.", "event.event-type-not-found", "eventTypeId");
+		return new BadRequestException(ErrorCode.EVENT_EVENT_TYPE_NOT_FOUND, "eventTypeId");
 	}
 
 	private static ConflictException stale() {
-		return new ConflictException("This event was changed by someone else. Reload and try again.", "event.stale", null);
+		return new ConflictException(ErrorCode.EVENT_STALE);
 	}
 
 }

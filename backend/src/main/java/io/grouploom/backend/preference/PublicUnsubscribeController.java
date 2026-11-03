@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,7 +44,7 @@ public class PublicUnsubscribeController {
 	public void unsubscribe(
 			@Parameter(description = "The unsubscribe token from the email's List-Unsubscribe header") @RequestParam(name = "t", required = false) String token) {
 		if (token == null || token.isBlank()) {
-			throw new InvalidMemberTokenException(InvalidMemberTokenException.INVALID);
+			throw new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID);
 		}
 		service.unsubscribe(token);
 	}

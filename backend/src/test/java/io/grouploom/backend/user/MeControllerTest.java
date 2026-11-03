@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.user.controller.MeController;
@@ -63,7 +64,7 @@ class MeControllerTest {
 
 	@Test
 	void me_whenUserWasDeleted_returns404() throws Exception {
-		given(service.me(any())).willThrow(new NotFoundException("User not found."));
+		given(service.me(any())).willThrow(new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
 		mockMvc.perform(get("/api/me").servletPath("/api")
 				.with(jwt().jwt(j -> j.subject(USER_ID.toString()).claim("gid", GROUP_ID.toString()).claim("role", "OWNER"))))

@@ -13,6 +13,7 @@ import io.grouploom.backend.auth.dto.AuthResponse;
 import io.grouploom.backend.auth.dto.LoginRequest;
 import io.grouploom.backend.auth.dto.SignUpRequest;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidCredentialsException;
 import io.grouploom.backend.error.InvalidRefreshTokenException;
 import io.grouploom.backend.group.Group;
@@ -49,7 +50,7 @@ public class AuthService {
 	public AuthResult signUp(SignUpRequest request) {
 		String email = normalize(request.email());
 		if (users.existsByEmailIgnoreCase(email)) {
-			throw new ConflictException("An account with this email already exists.");
+			throw new ConflictException(ErrorCode.ACCOUNT_EMAIL_TAKEN);
 		}
 		Group group = groups.save(new Group(request.groupName().trim(),
 				request.language() != null ? request.language() : Language.EN, clock.instant()));

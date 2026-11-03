@@ -35,6 +35,7 @@ import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.config.WebConfig;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.notification.dto.AudienceResponse;
@@ -87,7 +88,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void list_forAnotherGroupsEvent_returns404() throws Exception {
-		given(service.list(any(), eq(EVENT_ID))).willThrow(new NotFoundException("Event not found."));
+		given(service.list(any(), eq(EVENT_ID))).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(get(BASE))).andExpect(status().isNotFound());
 	}
@@ -125,7 +126,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void audience_forAnotherGroupsEvent_returns404() throws Exception {
-		given(service.audience(any(), eq(EVENT_ID), any())).willThrow(new NotFoundException("Event not found."));
+		given(service.audience(any(), eq(EVENT_ID), any())).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(get(BASE + "/audience"))).andExpect(status().isNotFound());
 	}
@@ -200,8 +201,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void schedule_whenTheServiceRejectsTheSendTime_returns400WithCode() throws Exception {
-		given(service.schedule(any(), eq(EVENT_ID), any())).willThrow(new io.grouploom.backend.error.BadRequestException(
-				"no", "notification.send-at-invalid", "offsetMinutes"));
+		given(service.schedule(any(), eq(EVENT_ID), any())).willThrow(new io.grouploom.backend.error.BadRequestException(io.grouploom.backend.error.ErrorCode.NOTIFICATION_SEND_AT_INVALID, "offsetMinutes"));
 
 		mockMvc.perform(api(post(BASE)).contentType(MediaType.APPLICATION_JSON)
 			.content(json("BEFORE_START", "\"offsetMinutes\":60")))
@@ -212,7 +212,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void schedule_atTheLimit_returns409() throws Exception {
-		given(service.schedule(any(), eq(EVENT_ID), any())).willThrow(new ConflictException("no", "notification.limit", null));
+		given(service.schedule(any(), eq(EVENT_ID), any())).willThrow(new ConflictException(ErrorCode.NOTIFICATION_LIMIT));
 
 		mockMvc.perform(api(post(BASE)).contentType(MediaType.APPLICATION_JSON).content(json("NOW", "")))
 			.andExpect(status().isConflict())
@@ -221,7 +221,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void schedule_forAnotherGroupsEvent_returns404() throws Exception {
-		given(service.schedule(any(), eq(EVENT_ID), any())).willThrow(new NotFoundException("Event not found."));
+		given(service.schedule(any(), eq(EVENT_ID), any())).willThrow(new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 
 		mockMvc.perform(api(post(BASE)).contentType(MediaType.APPLICATION_JSON).content(json("NOW", "")))
 			.andExpect(status().isNotFound());
@@ -244,7 +244,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void unschedule_afterItWasSent_returns409() throws Exception {
-		doThrow(new ConflictException("no", "notification.already-sent", null)).when(service).unschedule(any(), eq(EVENT_ID),
+		doThrow(new ConflictException(ErrorCode.NOTIFICATION_ALREADY_SENT)).when(service).unschedule(any(), eq(EVENT_ID),
 				eq(ID));
 
 		mockMvc.perform(api(delete(BASE + "/" + ID)))
@@ -254,7 +254,7 @@ class EventNotificationControllerTest {
 
 	@Test
 	void unschedule_aMissingNotification_returns404() throws Exception {
-		doThrow(new NotFoundException("Notification not found.")).when(service).unschedule(any(), eq(EVENT_ID), eq(ID));
+		doThrow(new NotFoundException(ErrorCode.NOTIFICATION_NOT_FOUND)).when(service).unschedule(any(), eq(EVENT_ID), eq(ID));
 
 		mockMvc.perform(api(delete(BASE + "/" + ID))).andExpect(status().isNotFound());
 	}

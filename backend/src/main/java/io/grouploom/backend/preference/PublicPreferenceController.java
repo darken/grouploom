@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.preference.dto.PublicPreferencesResponse;
 import io.grouploom.backend.preference.dto.UpdatePreferencesRequest;
@@ -68,7 +69,7 @@ public class PublicPreferenceController {
 	// A missing header is a 401 like any other bad link (not a 400), so the page always shows the same message.
 	private static String requireToken(String token) {
 		if (token == null || token.isBlank()) {
-			throw new InvalidMemberTokenException(InvalidMemberTokenException.INVALID);
+			throw new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID);
 		}
 		return token;
 	}

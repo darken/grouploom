@@ -14,9 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 
 /** Like the frontend's catalog test: every message exists in both languages, so none can fall back silently. */
-class MessageBundleParityTest {
+public class MessageBundleParityTest {
 
-	static Properties load(String name) throws IOException {
+	public static Properties load(String name) throws IOException {
 		Properties properties = new Properties();
 		try (Reader reader = new InputStreamReader(new ClassPathResource(name).getInputStream(),
 				StandardCharsets.UTF_8)) {

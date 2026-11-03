@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.member.Member;
@@ -66,7 +67,7 @@ public class PreferenceService {
 		Map<UUID, Boolean> requested = new LinkedHashMap<>();
 		for (EventTypeSubscription item : request.eventTypes()) {
 			if (!activeIds.contains(item.id())) {
-				throw new BadRequestException("Unknown event type.", "preference.unknown-event-type", "eventTypes");
+				throw new BadRequestException(ErrorCode.PREFERENCE_UNKNOWN_EVENT_TYPE, "eventTypes");
 			}
 			requested.put(item.id(), item.subscribed());
 		}

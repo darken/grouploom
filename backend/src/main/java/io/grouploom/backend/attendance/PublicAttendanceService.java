@@ -10,6 +10,7 @@ import io.grouploom.backend.attendance.dto.AnswerRequest;
 import io.grouploom.backend.attendance.dto.PublicAttendanceResponse;
 import io.grouploom.backend.attendance.dto.PublicEvent;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.member.Member;
@@ -51,7 +52,7 @@ public class PublicAttendanceService {
 		Member member = resolved.member();
 		Instant now = clock.instant();
 		if (!isOpen(event, now)) {
-			throw new ConflictException("Replies are closed for this event.", "attendance.closed", null);
+			throw new ConflictException(ErrorCode.ATTENDANCE_CLOSED);
 		}
 		String note = request.note() == null || request.note().isBlank() ? null : request.note().trim();
 		attendances.upsert(event.getGroup().getId(), event.getId(), member.getId(), request.response().name(), note,

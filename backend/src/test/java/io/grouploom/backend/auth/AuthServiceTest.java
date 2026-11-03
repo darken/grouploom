@@ -127,7 +127,7 @@ class AuthServiceTest {
 
 		assertThatThrownBy(() -> service.login(new LoginRequest("ada@example.com", "wrong")))
 			.isInstanceOf(InvalidCredentialsException.class)
-			.hasMessage("Email or password is incorrect.");
+			.hasMessage("auth.invalid-credentials");
 	}
 
 	@Test
@@ -136,7 +136,7 @@ class AuthServiceTest {
 
 		assertThatThrownBy(() -> service.login(new LoginRequest("nobody@example.com", "whatever")))
 			.isInstanceOf(InvalidCredentialsException.class)
-			.hasMessage("Email or password is incorrect.");
+			.hasMessage("auth.invalid-credentials");
 	}
 
 	@Test

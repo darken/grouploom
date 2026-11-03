@@ -27,6 +27,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import io.grouploom.backend.attendance.dto.AnswerRequest;
 import io.grouploom.backend.attendance.dto.PublicAttendanceResponse;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
@@ -139,7 +140,7 @@ class PublicAttendanceServiceTest {
 
 	@Test
 	void get_withABadToken_propagatesTheTokenError() {
-		given(tokens.resolveAttendance("bad")).willThrow(new InvalidMemberTokenException("member-token.expired"));
+		given(tokens.resolveAttendance("bad")).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_EXPIRED));
 
 		assertThatThrownBy(() -> service.get("bad")).isInstanceOfSatisfying(InvalidMemberTokenException.class,
 				e -> assertThat(e.getCode()).isEqualTo("member-token.expired"));
@@ -193,7 +194,7 @@ class PublicAttendanceServiceTest {
 
 	@Test
 	void answer_withABadToken_propagatesTheTokenErrorAndWritesNothing() {
-		given(tokens.resolveAttendance("bad")).willThrow(new InvalidMemberTokenException("member-token.invalid"));
+		given(tokens.resolveAttendance("bad")).willThrow(new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 
 		assertThatThrownBy(() -> service.answer("bad", new AnswerRequest(AttendanceResponse.GOING, null)))
 			.isInstanceOf(InvalidMemberTokenException.class);

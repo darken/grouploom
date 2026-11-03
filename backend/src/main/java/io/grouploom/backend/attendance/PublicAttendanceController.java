@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.grouploom.backend.attendance.dto.AnswerRequest;
 import io.grouploom.backend.attendance.dto.PublicAttendanceResponse;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -70,7 +71,7 @@ public class PublicAttendanceController {
 	// A missing header is a 401 like any other bad link (not a 400), so the page always shows the same message.
 	private static String requireToken(String token) {
 		if (token == null || token.isBlank()) {
-			throw new InvalidMemberTokenException(InvalidMemberTokenException.INVALID);
+			throw new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID);
 		}
 		return token;
 	}

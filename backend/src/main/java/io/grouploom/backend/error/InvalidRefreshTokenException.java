@@ -1,9 +1,9 @@
 package io.grouploom.backend.error;
 
-public class InvalidRefreshTokenException extends RuntimeException {
+public class InvalidRefreshTokenException extends DomainException {
 
 	public InvalidRefreshTokenException() {
-		super("Session expired. Please sign in again.");
+		super(ErrorCode.AUTH_SESSION_EXPIRED);
 	}
 
 }

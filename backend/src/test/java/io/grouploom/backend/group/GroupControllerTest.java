@@ -27,6 +27,7 @@ import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.config.WebConfig;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.ForbiddenException;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.group.dto.UpdateGroupRequest;
@@ -91,7 +92,7 @@ class GroupControllerTest {
 
 	@Test
 	void update_whenTheCallerIsNotTheOwner_returns403ProblemJson() throws Exception {
-		given(service.update(any(), any())).willThrow(new ForbiddenException("Only the owner can change the group."));
+		given(service.update(any(), any())).willThrow(new ForbiddenException(ErrorCode.GROUP_OWNER_ONLY));
 
 		mockMvc.perform(api(patch("/api/group")).content("{\"language\":\"ja\"}"))
 			.andExpect(status().isForbidden())

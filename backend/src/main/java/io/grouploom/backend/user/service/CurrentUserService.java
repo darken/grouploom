@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.grouploom.backend.auth.CurrentUser;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.user.dto.MeResponse;
 import io.grouploom.backend.user.repository.UserRepository;
@@ -22,7 +23,7 @@ public class CurrentUserService {
 		return users.findWithGroupById(current.userId())
 			.filter(user -> user.getGroup().getId().equals(current.groupId()))
 			.map(MeResponse::from)
-			.orElseThrow(() -> new NotFoundException("User not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 	}
 
 }

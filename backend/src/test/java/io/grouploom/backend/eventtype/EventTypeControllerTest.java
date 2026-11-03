@@ -37,6 +37,7 @@ import io.grouploom.backend.auth.CurrentUserArgumentResolver;
 import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.config.WebConfig;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.eventtype.dto.EventTypeResponse;
@@ -154,7 +155,7 @@ class EventTypeControllerTest {
 
 	@Test
 	void get_withTypeFromAnotherGroup_returns404ProblemJson() throws Exception {
-		given(service.get(any(), eq(ID))).willThrow(new NotFoundException("Event type not found."));
+		given(service.get(any(), eq(ID))).willThrow(new NotFoundException(ErrorCode.EVENT_TYPE_NOT_FOUND));
 
 		mockMvc.perform(api(get("/api/event-types/" + ID)))
 			.andExpect(status().isNotFound())
@@ -218,7 +219,7 @@ class EventTypeControllerTest {
 
 	@Test
 	void create_withDuplicateName_returns409WithCodeAndField() throws Exception {
-		given(service.create(any(), any())).willThrow(new ConflictException("taken", "event-type.name-taken", "name"));
+		given(service.create(any(), any())).willThrow(new ConflictException(ErrorCode.EVENT_TYPE_NAME_TAKEN, "name"));
 
 		mockMvc.perform(api(post("/api/event-types")).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE))
 			.andExpect(status().isConflict())
@@ -254,7 +255,7 @@ class EventTypeControllerTest {
 
 	@Test
 	void update_withStaleVersion_returns409WithStaleCode() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException("stale", "event-type.stale", null));
+		given(service.update(any(), eq(ID), any())).willThrow(new ConflictException(ErrorCode.EVENT_TYPE_STALE));
 
 		mockMvc.perform(api(put("/api/event-types/" + ID)).contentType(MediaType.APPLICATION_JSON).content(VALID_UPDATE))
 			.andExpect(status().isConflict())
@@ -264,7 +265,7 @@ class EventTypeControllerTest {
 
 	@Test
 	void update_withTypeFromAnotherGroup_returns404() throws Exception {
-		given(service.update(any(), eq(ID), any())).willThrow(new NotFoundException("Event type not found."));
+		given(service.update(any(), eq(ID), any())).willThrow(new NotFoundException(ErrorCode.EVENT_TYPE_NOT_FOUND));
 
 		mockMvc.perform(api(put("/api/event-types/" + ID)).contentType(MediaType.APPLICATION_JSON).content(VALID_UPDATE))
 			.andExpect(status().isNotFound());
@@ -281,14 +282,14 @@ class EventTypeControllerTest {
 
 	@Test
 	void delete_withTypeFromAnotherGroup_returns404() throws Exception {
-		org.mockito.Mockito.doThrow(new NotFoundException("Event type not found.")).when(service).delete(any(), eq(ID));
+		org.mockito.Mockito.doThrow(new NotFoundException(ErrorCode.EVENT_TYPE_NOT_FOUND)).when(service).delete(any(), eq(ID));
 
 		mockMvc.perform(api(delete("/api/event-types/" + ID))).andExpect(status().isNotFound());
 	}
 
 	@Test
 	void delete_withTypeUsedByEvents_returns409WithInUseCode() throws Exception {
-		org.mockito.Mockito.doThrow(new ConflictException("in use", "event-type.in-use", null)).when(service).delete(any(), eq(ID));
+		org.mockito.Mockito.doThrow(new ConflictException(ErrorCode.EVENT_TYPE_IN_USE)).when(service).delete(any(), eq(ID));
 
 		mockMvc.perform(api(delete("/api/event-types/" + ID)))
 			.andExpect(status().isConflict())

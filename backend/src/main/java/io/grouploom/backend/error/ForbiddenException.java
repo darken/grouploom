@@ -1,9 +1,9 @@
 package io.grouploom.backend.error;
 
-public class ForbiddenException extends RuntimeException {
+public class ForbiddenException extends DomainException {
 
-	public ForbiddenException(String message) {
-		super(message);
+	public ForbiddenException(ErrorCode errorCode) {
+		super(errorCode);
 	}
 
 }

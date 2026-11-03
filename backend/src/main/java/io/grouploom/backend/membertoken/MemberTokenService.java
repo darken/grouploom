@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.grouploom.backend.config.AppProperties;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.member.Member;
@@ -62,14 +63,14 @@ public class MemberTokenService {
 
 	private MemberToken use(String raw, MemberTokenPurpose purpose) {
 		if (raw == null || raw.isBlank()) {
-			throw new InvalidMemberTokenException(InvalidMemberTokenException.INVALID);
+			throw new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID);
 		}
 		MemberToken token = repository.findByTokenHash(OpaqueTokens.hash(raw))
 			.filter(t -> t.getPurpose() == purpose && !t.isRevoked())
-			.orElseThrow(() -> new InvalidMemberTokenException(InvalidMemberTokenException.INVALID));
+			.orElseThrow(() -> new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_INVALID));
 		Instant now = clock.instant();
 		if (!token.isUsable(now)) {
-			throw new InvalidMemberTokenException(InvalidMemberTokenException.EXPIRED);
+			throw new InvalidMemberTokenException(ErrorCode.MEMBER_TOKEN_EXPIRED);
 		}
 		token.markUsed(now);
 		return token;

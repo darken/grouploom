@@ -26,6 +26,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.BadRequestException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.event.dto.CancelEventRequest;
 import io.grouploom.backend.event.dto.CreateEventRequest;
 import io.grouploom.backend.event.dto.EventResponse;
@@ -63,7 +64,7 @@ public class EventController {
 			@ParameterObject @PageableDefault(size = 20) Pageable pageable) {
 		When parsed = When.parse(when);
 		if (parsed == null) {
-			throw new BadRequestException("when must be upcoming or past.", "event.invalid-when", "when");
+			throw new BadRequestException(ErrorCode.EVENT_INVALID_WHEN, "when");
 		}
 		Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
 		return new PagedModel<>(service.list(current, parsed, eventTypeId, unsorted));

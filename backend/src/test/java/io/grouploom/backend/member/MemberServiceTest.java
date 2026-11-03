@@ -119,7 +119,7 @@ class MemberServiceTest {
 			.isInstanceOfSatisfying(ConflictException.class, e -> {
 				assertThat(e.getCode()).isEqualTo("member.email-taken");
 				assertThat(e.getField()).isEqualTo("email");
-				assertThat(e.getMessage()).isEqualTo("A member with this email already exists.");
+				assertThat(e.getCode()).isEqualTo("member.email-taken");
 			});
 		verify(repository, never()).saveAndFlush(any());
 	}

@@ -15,6 +15,7 @@ import io.grouploom.backend.attendance.dto.AttendanceSummaryResponse;
 import io.grouploom.backend.attendance.dto.SetAttendanceRequest;
 import io.grouploom.backend.auth.CurrentUser;
 import io.grouploom.backend.error.ConflictException;
+import io.grouploom.backend.error.ErrorCode;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.event.EventRepository;
@@ -80,19 +81,19 @@ public class AttendanceService {
 
 	private static void requireNotCancelled(Event event) {
 		if (event.isCancelled()) {
-			throw new ConflictException("This event is cancelled.", "attendance.closed", null);
+			throw new ConflictException(ErrorCode.ATTENDANCE_EVENT_CANCELLED);
 		}
 	}
 
 	private Event findEvent(CurrentUser current, UUID eventId) {
 		// Scoped by group: another group's id is indistinguishable from a missing one.
 		return events.findByIdAndGroupId(eventId, current.groupId())
-			.orElseThrow(() -> new NotFoundException("Event not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.EVENT_NOT_FOUND));
 	}
 
 	private Member findMember(CurrentUser current, UUID memberId) {
 		return members.findByIdAndGroupId(memberId, current.groupId())
-			.orElseThrow(() -> new NotFoundException("Member not found."));
+			.orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 	}
 
 }
