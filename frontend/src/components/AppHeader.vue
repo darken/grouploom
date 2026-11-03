@@ -1,16 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
 
 import UserMenu from './UserMenu.vue'
 
 const route = useRoute()
+const { t } = useI18n()
 
-const links = [
-  { to: '/', label: 'Home' },
-  { to: '/events', label: 'Events' },
-  { to: '/event-types', label: 'Event types' },
-  { to: '/members', label: 'Members' },
-]
+const links = computed(() => [
+  { to: '/', label: t('nav.home') },
+  { to: '/events', label: t('nav.events') },
+  { to: '/event-types', label: t('nav.eventTypes') },
+  { to: '/members', label: t('nav.members') },
+])
 
 // A section stays current on its sub-pages (/events/:id), which RouterLink's exact match doesn't do.
 function isCurrent(to: string) {
@@ -29,7 +32,7 @@ function isCurrent(to: string) {
         </svg>
         <span class="max-sm:sr-only">GroupLoom</span>
       </RouterLink>
-      <nav aria-label="Primary" class="mr-auto ml-3 flex gap-3.5 text-[14px] whitespace-nowrap sm:ml-8 sm:gap-6 sm:text-[15px]">
+      <nav :aria-label="t('nav.label')" class="mr-auto ml-3 flex gap-3.5 text-[14px] whitespace-nowrap sm:ml-8 sm:gap-6 sm:text-[15px]">
         <RouterLink v-for="link in links" :key="link.to" v-slot="{ href, navigate }" :to="link.to" custom>
           <a :href="href" class="nav-link py-1" :aria-current="isCurrent(link.to) ? 'page' : undefined" @click="navigate">{{ link.label }}</a>
         </RouterLink>

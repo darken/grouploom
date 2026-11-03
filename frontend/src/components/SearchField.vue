@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const DEBOUNCE_MS = 250
+
+const { t } = useI18n()
 
 const props = defineProps<{ modelValue: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
@@ -65,8 +68,8 @@ onBeforeUnmount(() => {
       type="search"
       name="q"
       autocomplete="off"
-      placeholder="Search"
-      aria-label="Search members"
+      :placeholder="t('common.search.placeholder')"
+      :aria-label="t('common.search.label')"
       class="h-10 w-full rounded-full border border-transparent bg-[var(--app-fill)] pr-10 pl-10 text-[16px] text-[var(--app-ink)] transition-shadow duration-150 ease-out [appearance:none] placeholder:text-[var(--app-muted)] focus:border-[var(--app-accent)] focus:ring-4 focus:ring-[var(--app-accent)]/20 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
       @input="onInput"
       @keydown.esc="clear"
@@ -74,7 +77,7 @@ onBeforeUnmount(() => {
     <button
       v-if="text"
       type="button"
-      aria-label="Clear search"
+      :aria-label="t('common.search.clear')"
       class="absolute top-1/2 right-1.5 grid size-7 -translate-y-1/2 place-items-center rounded-full text-[var(--app-muted)] hover:bg-[var(--app-line)]/50"
       @click="clear"
     >

@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api } from '@/api/client'
-import { ApiError, unwrap } from '@/api/errors'
+import { ApiError, networkError, unwrap } from '@/api/errors'
 import type { components } from '@/api/schema'
 import type { PageInfo } from '@/stores/eventTypes'
 
@@ -16,7 +16,7 @@ const PAGE_SIZE = 50
 function toApiError(e: unknown): ApiError {
   return e instanceof ApiError
     ? e
-    : new ApiError({ title: 'Network error', detail: 'Could not reach the server.' }, 0)
+    : networkError()
 }
 
 /** The attendance of the event being looked at on the event page. */

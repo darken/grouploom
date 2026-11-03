@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
+import { applyLocale } from '@/i18n'
 import PaginationBar from '../PaginationBar.vue'
 
 describe('PaginationBar', () => {
@@ -35,5 +36,15 @@ describe('PaginationBar', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Previous')!.trigger('click')
 
     expect(wrapper.emitted('update:page')).toEqual([[2], [0]])
+  })
+})
+
+describe('PaginationBar in Japanese', () => {
+  it('shows the range and the buttons in Japanese', () => {
+    applyLocale('ja')
+    const wrapper = mount(PaginationBar, { props: { page: 0, size: 20, total: 43 } })
+
+    expect(wrapper.text()).toContain('43件中 1–20件')
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['前へ', '次へ'])
   })
 })

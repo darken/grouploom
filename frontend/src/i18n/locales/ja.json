@@ -49,5 +49,69 @@
       "body": "まだ起動中か、停止している可能性があります。しばらくしてからもう一度お試しください。",
       "retry": "もう一度試す"
     }
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "retry": "再試行",
+    "pagination": {
+      "label": "ページ送り",
+      "range": "{total}件中 {from}–{to}件",
+      "previous": "前へ",
+      "next": "次へ"
+    },
+    "search": {
+      "placeholder": "検索",
+      "label": "メンバーを検索",
+      "clear": "検索をクリア"
+    },
+    "save": {
+      "saving": "保存中…",
+      "saved": "保存しました",
+      "failed": "保存できませんでした。",
+      "retry": "再試行"
+    }
+  },
+  "nav": {
+    "label": "メインメニュー",
+    "home": "ホーム",
+    "events": "イベント",
+    "eventTypes": "イベントの種類",
+    "members": "メンバー",
+    "account": "アカウント",
+    "signOut": "ログアウト"
+  },
+  "page": {
+    "title": {
+      "home": "ホーム",
+      "events": "イベント",
+      "event": "イベント",
+      "eventTypes": "イベントの種類",
+      "members": "メンバー",
+      "login": "ログイン",
+      "signup": "グループを作成",
+      "memberPreferences": "メール設定",
+      "memberAttendance": "出欠の回答",
+      "notFound": "ページが見つかりません"
+    },
+    "notFound": {
+      "description": "お探しのページは存在しません。",
+      "back": "ホームに戻る"
+    }
+  },
+  "home": {
+    "welcome": "ようこそ、{name}さん",
+    "nextUp": "今後の予定",
+    "seeAll": "すべてのイベントを見る",
+    "emptyTitle": "予定はありません",
+    "emptyDescription": "登録したイベントがここに表示されます。",
+    "schedule": "イベントを登録"
+  },
+  "errors": {
+    "network": {
+      "title": "ネットワークエラー",
+      "detail": "サーバーに接続できませんでした。"
+    },
+    "invalidValue": "値が正しくありません。",
+    "requestFailed": "リクエストに失敗しました。"
   }
 }

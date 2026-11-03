@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { api } from '@/api/client'
+import { applyLocale } from '@/i18n'
 import { createAppRouter, safeRedirect } from '..'
 import { useAuthStore } from '@/stores/auth'
 
@@ -79,7 +81,7 @@ describe('router guard for public routes', () => {
     await router.push('/m/preferences')
 
     expect(router.currentRoute.value.name).toBe('member-preferences')
-    expect(router.currentRoute.value.meta).toMatchObject({ public: true, layout: 'member', title: 'Email preferences' })
+    expect(router.currentRoute.value.meta).toMatchObject({ public: true, layout: 'member', titleKey: 'page.title.memberPreferences' })
     expect(post).not.toHaveBeenCalled()
     expect(useAuthStore().status).toBe('unknown')
   })
@@ -91,7 +93,7 @@ describe('router guard for public routes', () => {
 
     expect(router.currentRoute.value.name).toBe('member-attendance')
     expect(router.currentRoute.value.hash).toBe('#t=abc&r=going')
-    expect(router.currentRoute.value.meta).toMatchObject({ public: true, layout: 'member', title: 'Reply' })
+    expect(router.currentRoute.value.meta).toMatchObject({ public: true, layout: 'member', titleKey: 'page.title.memberAttendance' })
     expect(post).not.toHaveBeenCalled()
     expect(useAuthStore().status).toBe('unknown')
   })
@@ -121,6 +123,18 @@ describe('router guard for public routes', () => {
 
     await router.push('/m/preferences')
 
+    expect(document.title).toBe('Email preferences · GroupLoom')
+  })
+
+  it('sets the document title in Japanese and follows a language change', async () => {
+    const router = createAppRouter(createMemoryHistory())
+    applyLocale('ja')
+
+    await router.push('/m/preferences')
+    expect(document.title).toBe('メール設定 · GroupLoom')
+
+    applyLocale('en')
+    await nextTick()
     expect(document.title).toBe('Email preferences · GroupLoom')
   })
 })

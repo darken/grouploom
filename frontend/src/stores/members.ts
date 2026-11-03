@@ -2,7 +2,8 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api } from '@/api/client'
-import { ApiError, unwrap } from '@/api/errors'
+import { ApiError, networkError, unwrap } from '@/api/errors'
+import { i18n } from '@/i18n'
 import type { components } from '@/api/schema'
 import { fieldErrorsFrom } from '@/composables/useFieldErrors'
 import type { PageInfo } from '@/stores/eventTypes'
@@ -25,7 +26,7 @@ const EMAIL_REFRESH_MS = 10_000
 function toApiError(e: unknown): ApiError {
   return e instanceof ApiError
     ? e
-    : new ApiError({ title: 'Network error', detail: 'Could not reach the server.' }, 0)
+    : networkError()
 }
 
 export const useMembersStore = defineStore('members', () => {
@@ -44,7 +45,7 @@ export const useMembersStore = defineStore('members', () => {
   const fieldErrors = computed<Record<string, string>>(() => {
     const problem = saveError.value?.problem
     if (!problem || problem.code === 'member.stale') return {}
-    if (problem.code && problem.field) return { [problem.field]: problem.detail ?? 'Invalid value.' }
+    if (problem.code && problem.field) return { [problem.field]: problem.detail ?? i18n.global.t('errors.invalidValue') }
     return fieldErrorsFrom(saveError.value)
   })
 

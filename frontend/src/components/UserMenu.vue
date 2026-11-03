@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import { useI18n } from 'vue-i18n'
+
 import { useAuthStore } from '@/stores/auth'
 import { initials as initialsOf } from '@/ui/initials'
 
 const auth = useAuthStore()
+const { t } = useI18n()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
@@ -72,7 +75,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
       class="grid size-9 place-items-center rounded-full bg-[var(--app-fill)] text-sm font-semibold transition-colors duration-150 hover:bg-[var(--app-line)]"
       aria-haspopup="dialog"
       :aria-expanded="open"
-      aria-label="Account"
+      :aria-label="t('nav.account')"
       @click="toggle"
     >
       {{ initials }}
@@ -81,7 +84,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
       v-if="open"
       ref="popover"
       role="dialog"
-      aria-label="Account"
+      :aria-label="t('nav.account')"
       class="absolute right-0 mt-2 w-64 rounded-2xl border border-[var(--app-line)]/60 bg-[var(--app-surface)] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
     >
       <p class="font-medium">{{ auth.user.displayName }}</p>
@@ -92,7 +95,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
         class="mt-4 w-full rounded-xl px-3 py-2 text-left text-[15px] text-[var(--app-accent)] transition-colors duration-150 hover:bg-[var(--app-accent)]/10"
         @click="signOut"
       >
-        Sign out
+        {{ t('nav.signOut') }}
       </button>
     </div>
   </div>

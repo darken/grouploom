@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import type { SaveStatus } from '@/stores/memberPreferences'
 
 const props = defineProps<{ status: SaveStatus }>()
 const emit = defineEmits<{ retry: [] }>()
+const { t } = useI18n()
 
 // "Saved" is a confirmation, not a state: it fades away after two seconds.
 const SAVED_MS = 2000
@@ -35,13 +37,13 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <span aria-live="polite" class="text-[13px] text-[var(--app-muted)]">
-    <template v-if="status === 'saving'">Saving…</template>
+    <template v-if="status === 'saving'">{{ t('common.save.saving') }}</template>
     <Transition name="fade">
-      <span v-if="status === 'saved' && savedVisible">Saved</span>
+      <span v-if="status === 'saved' && savedVisible">{{ t('common.save.saved') }}</span>
     </Transition>
     <template v-if="status === 'error'">
-      Couldn't save.
-      <button type="button" class="rounded font-medium text-[var(--app-accent)] underline-offset-2 hover:underline" @click="emit('retry')">Try again.</button>
+      {{ t('common.save.failed') }}
+      <button type="button" class="rounded font-medium text-[var(--app-accent)] underline-offset-2 hover:underline" @click="emit('retry')">{{ t('common.save.retry') }}</button>
     </template>
   </span>
 </template>

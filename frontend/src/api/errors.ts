@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n'
+
 import type { components } from './schema'
 
 export type ProblemDetail = components['schemas']['ProblemDetail']
@@ -7,11 +9,17 @@ export class ApiError extends Error {
   readonly status: number
 
   constructor(problem: ProblemDetail, status = problem.status ?? 0) {
-    super(problem.detail ?? problem.title ?? 'Request failed')
+    super(problem.detail ?? problem.title ?? i18n.global.t('errors.requestFailed'))
     this.name = 'ApiError'
     this.problem = problem
     this.status = status
   }
+}
+
+/** The error shown when the request never got an answer, in the active language. */
+export function networkError(): ApiError {
+  const { t } = i18n.global
+  return new ApiError({ title: t('errors.network.title'), detail: t('errors.network.detail') }, 0)
 }
 
 interface ApiResult<T> {

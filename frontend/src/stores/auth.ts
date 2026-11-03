@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 import { api } from '@/api/client'
 import { configureAuth } from '@/api/auth-middleware'
-import { ApiError, unwrap } from '@/api/errors'
+import { ApiError, networkError, unwrap } from '@/api/errors'
 import type { components } from '@/api/schema'
 
 export type MeResponse = components['schemas']['MeResponse']
@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   function toApiError(e: unknown): ApiError {
     return e instanceof ApiError
       ? e
-      : new ApiError({ title: 'Network error', detail: 'Could not reach the server.' }, 0)
+      : networkError()
   }
 
   async function submit(request: () => Promise<AuthResponse>): Promise<boolean> {

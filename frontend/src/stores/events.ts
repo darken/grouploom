@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api } from '@/api/client'
-import { ApiError, unwrap } from '@/api/errors'
+import { ApiError, networkError, unwrap } from '@/api/errors'
 import type { components } from '@/api/schema'
 import { fieldErrorsFrom } from '@/composables/useFieldErrors'
 import type { PageInfo } from '@/stores/eventTypes'
@@ -27,7 +27,7 @@ const NEXT_UP_SIZE = 3
 function toApiError(e: unknown): ApiError {
   return e instanceof ApiError
     ? e
-    : new ApiError({ title: 'Network error', detail: 'Could not reach the server.' }, 0)
+    : networkError()
 }
 
 export const useEventsStore = defineStore('events', () => {

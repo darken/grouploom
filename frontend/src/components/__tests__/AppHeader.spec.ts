@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+import { applyLocale } from '@/i18n'
 import AppHeader from '../AppHeader.vue'
 
 async function mountHeader(path: string) {
@@ -48,5 +49,15 @@ describe('AppHeader navigation', () => {
 
     const current = wrapper.findAll('nav a').filter((a) => a.attributes('aria-current') === 'page')
     expect(current.map((a) => a.text())).toEqual(['Events'])
+  })
+})
+
+describe('AppHeader in Japanese', () => {
+  it('translates the navigation', async () => {
+    applyLocale('ja')
+    const wrapper = await mountHeader('/')
+
+    expect(wrapper.find('nav').attributes('aria-label')).toBe('メインメニュー')
+    expect(wrapper.findAll('nav a').map((a) => a.text())).toEqual(['ホーム', 'イベント', 'イベントの種類', 'メンバー'])
   })
 })

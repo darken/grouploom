@@ -1,10 +1,14 @@
+import { watch } from 'vue'
 import { createRouter, createWebHistory, type RouterHistory, type LocationQueryValue } from 'vue-router'
 
+import { i18n, type MessageSchema } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
+
+type TitleKey = `page.title.${keyof MessageSchema['page']['title']}`
 
 declare module 'vue-router' {
   interface RouteMeta {
-    title?: string
+    titleKey?: TitleKey
     requiresAuth?: boolean
     guestOnly?: boolean
     /** Reachable by anyone; the guard skips session restore and every auth redirect. */
@@ -34,61 +38,61 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
         path: '/',
         name: 'home',
         component: () => import('@/views/HomeView.vue'),
-        meta: { title: 'Home', requiresAuth: true },
+        meta: { titleKey: 'page.title.home', requiresAuth: true },
       },
       {
         path: '/events',
         name: 'events',
         component: () => import('@/views/EventsView.vue'),
-        meta: { title: 'Events', requiresAuth: true },
+        meta: { titleKey: 'page.title.events', requiresAuth: true },
       },
       {
         path: '/events/:id',
         name: 'event',
         component: () => import('@/views/EventDetailView.vue'),
-        meta: { title: 'Event', requiresAuth: true },
+        meta: { titleKey: 'page.title.event', requiresAuth: true },
       },
       {
         path: '/event-types',
         name: 'event-types',
         component: () => import('@/views/EventTypesView.vue'),
-        meta: { title: 'Event types', requiresAuth: true },
+        meta: { titleKey: 'page.title.eventTypes', requiresAuth: true },
       },
       {
         path: '/members',
         name: 'members',
         component: () => import('@/views/MembersView.vue'),
-        meta: { title: 'Members', requiresAuth: true },
+        meta: { titleKey: 'page.title.members', requiresAuth: true },
       },
       {
         path: '/login',
         name: 'login',
         component: () => import('@/views/LoginView.vue'),
-        meta: { title: 'Sign in', guestOnly: true, layout: 'auth' },
+        meta: { titleKey: 'page.title.login', guestOnly: true, layout: 'auth' },
       },
       {
         path: '/signup',
         name: 'signup',
         component: () => import('@/views/SignupView.vue'),
-        meta: { title: 'Create your group', guestOnly: true, layout: 'auth' },
+        meta: { titleKey: 'page.title.signup', guestOnly: true, layout: 'auth' },
       },
       {
         path: '/m/preferences',
         name: 'member-preferences',
         component: () => import('@/views/MemberPreferencesView.vue'),
-        meta: { title: 'Email preferences', public: true, layout: 'member' },
+        meta: { titleKey: 'page.title.memberPreferences', public: true, layout: 'member' },
       },
       {
         path: '/m/attend',
         name: 'member-attendance',
         component: () => import('@/views/MemberAttendanceView.vue'),
-        meta: { title: 'Reply', public: true, layout: 'member' },
+        meta: { titleKey: 'page.title.memberAttendance', public: true, layout: 'member' },
       },
       {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/views/NotFoundView.vue'),
-        meta: { title: 'Page not found' },
+        meta: { titleKey: 'page.title.notFound' },
       },
     ],
   })
@@ -103,9 +107,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
     return true
   })
 
-  router.afterEach((to) => {
-    document.title = to.meta.title ? `${to.meta.title} · GroupLoom` : 'GroupLoom'
-  })
+  const updateTitle = () => {
+    const { titleKey } = router.currentRoute.value.meta
+    document.title = titleKey ? `${i18n.global.t(titleKey)} · GroupLoom` : 'GroupLoom'
+  }
+  router.afterEach(updateTitle)
+  watch(i18n.global.locale, updateTitle)
 
   return router
 }

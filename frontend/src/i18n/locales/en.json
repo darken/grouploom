@@ -49,5 +49,69 @@
       "body": "It may still be starting, or it may be down. Try again in a moment.",
       "retry": "Try again"
     }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "pagination": {
+      "label": "Pagination",
+      "range": "{from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "search": {
+      "placeholder": "Search",
+      "label": "Search members",
+      "clear": "Clear search"
+    },
+    "save": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "failed": "Couldn't save.",
+      "retry": "Try again."
+    }
+  },
+  "nav": {
+    "label": "Primary",
+    "home": "Home",
+    "events": "Events",
+    "eventTypes": "Event types",
+    "members": "Members",
+    "account": "Account",
+    "signOut": "Sign out"
+  },
+  "page": {
+    "title": {
+      "home": "Home",
+      "events": "Events",
+      "event": "Event",
+      "eventTypes": "Event types",
+      "members": "Members",
+      "login": "Sign in",
+      "signup": "Create your group",
+      "memberPreferences": "Email preferences",
+      "memberAttendance": "Reply",
+      "notFound": "Page not found"
+    },
+    "notFound": {
+      "description": "The page you’re looking for doesn’t exist.",
+      "back": "Back to home"
+    }
+  },
+  "home": {
+    "welcome": "Welcome, {name}",
+    "nextUp": "Next up",
+    "seeAll": "See all events",
+    "emptyTitle": "Nothing scheduled",
+    "emptyDescription": "Events you schedule will show up here.",
+    "schedule": "Schedule an event"
+  },
+  "errors": {
+    "network": {
+      "title": "Network error",
+      "detail": "Could not reach the server."
+    },
+    "invalidValue": "Invalid value.",
+    "requestFailed": "Request failed"
   }
 }
