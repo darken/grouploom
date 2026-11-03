@@ -12,6 +12,9 @@ Terms used in `ja.json`. Keep them consistent across the UI.
 | Reply (to an invitation) | 出欠の回答 |
 | Invitation | 招待 |
 | Cancel an event | 中止 |
+| Schedule (a notification) | 予約 |
+| Archive | アーカイブ |
+| Owner | オーナー |
 
 ## Style
 
