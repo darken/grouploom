@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,22 +25,22 @@
     <td align="center" style="padding:32px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
         <tr>
-          <td class="card" style="background-color:#ffffff;border-radius:16px;padding:40px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+          <td class="card" style="background-color:#ffffff;border-radius:16px;padding:40px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;">
             <p class="secondary" th:text="${groupName}" style="margin:0 0 8px 0;font-size:14px;line-height:20px;color:#6e6e73;">Group</p>
-            <h1 class="primary" style="margin:0 0 24px 0;font-size:24px;line-height:30px;font-weight:600;color:#1d1d1f;">Choose which events you hear about</h1>
-            <p class="primary" th:text="${'Hi ' + memberName + ','}" style="margin:0 0 16px 0;font-size:16px;line-height:24px;color:#1d1d1f;">Hi,</p>
-            <p class="primary" th:text="${groupName + ' would like to know which of its events you want to hear about. Use the button below to choose, or to pause invitations altogether.'}" style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1d1d1f;">Intro</p>
+            <h1 class="primary" th:text="#{mail.preferences.heading}" style="margin:0 0 24px 0;font-size:24px;line-height:30px;font-weight:600;color:#1d1d1f;">Choose which events you hear about</h1>
+            <p class="primary" th:text="#{mail.preferences.greeting(${memberName})}" style="margin:0 0 16px 0;font-size:16px;line-height:24px;color:#1d1d1f;">Hi,</p>
+            <p class="primary" th:text="#{mail.preferences.intro.html(${groupName})}" style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1d1d1f;">Intro</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px 0;">
               <tr>
                 <td align="center" bgcolor="#0071e3" style="border-radius:8px;background-color:#0071e3;">
-                  <a th:href="${link}" href="#" style="display:inline-block;padding:12px 24px;font-size:16px;line-height:22px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Set your preferences</a>
+                  <a th:href="${link}" href="#" style="display:inline-block;padding:12px 24px;font-size:16px;line-height:22px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;" th:text="#{mail.preferences.button}">Set your preferences</a>
                 </td>
               </tr>
             </table>
-            <p class="secondary" style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:#6e6e73;">Or copy this link into your browser:</p>
+            <p class="secondary" th:text="#{mail.preferences.copy-link}" style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:#6e6e73;">Or copy this link into your browser:</p>
             <p style="margin:0 0 28px 0;font-size:13px;line-height:20px;word-break:break-all;"><a class="link" th:href="${link}" th:text="${link}" href="#" style="color:#0066cc;text-decoration:none;">link</a></p>
-            <p class="secondary" th:text="${'This link works for ' + ttlText + '.'}" style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:#6e6e73;">This link works for a while.</p>
-            <p class="secondary" style="margin:0;font-size:13px;line-height:20px;color:#6e6e73;">If you weren't expecting this, you can ignore it.</p>
+            <p class="secondary" th:text="#{mail.preferences.expires(${ttlText})}" style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:#6e6e73;">This link works for a while.</p>
+            <p class="secondary" th:utext="#{mail.preferences.ignore}" style="margin:0;font-size:13px;line-height:20px;color:#6e6e73;">If you weren't expecting this, you can ignore it.</p>
           </td>
         </tr>
       </table>

@@ -1,12 +1,12 @@
 [[${groupName}]]
 
-Hi [[${memberName}]],
+[(#{mail.preferences.greeting(${memberName})})]
 
-[[${groupName}]] would like to know which of its events you want to hear about. Use the link below to choose, or to pause invitations altogether.
+[(#{mail.preferences.intro.text(${groupName})})]
 
-Set your preferences:
+[(#{mail.preferences.button})]:
 [[${link}]]
 
-This link works for [[${ttlText}]].
+[(#{mail.preferences.expires(${ttlText})})]
 
-If you weren't expecting this, you can ignore it.
+[(#{mail.preferences.ignore})]

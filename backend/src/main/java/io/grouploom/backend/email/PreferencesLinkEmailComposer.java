@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -24,9 +25,11 @@ public class PreferencesLinkEmailComposer implements EmailComposer {
 	private final TemplateEngine templates;
 	private final AppProperties properties;
 	private final MemberTokenService memberTokens;
+	private final MessageSource messages;
 
 	public PreferencesLinkEmailComposer(@Qualifier("mailTemplateEngine") TemplateEngine templates,
-			AppProperties properties, MemberTokenService memberTokens) {
+			AppProperties properties, MemberTokenService memberTokens, MessageSource messages) {
+		this.messages = messages;
 		this.templates = templates;
 		this.properties = properties;
 		this.memberTokens = memberTokens;
@@ -46,17 +49,19 @@ public class PreferencesLinkEmailComposer implements EmailComposer {
 
 	/** {@code requestedBy} may be null (the organizer's account is gone); then there is no Reply-To. */
 	public OutgoingEmail compose(Member member, Group group, User requestedBy, IssuedToken token) {
+		// The group's language, read now so a change also applies to emails already queued.
+		Locale locale = group.getLanguage().toLocale();
 		String groupName = headerSafe(group.getName());
-		String subject = "Choose which " + groupName + " events you hear about";
+		String subject = messages.getMessage("mail.preferences.subject", new Object[] { groupName }, locale);
 
-		Context context = new Context(Locale.ENGLISH);
+		Context context = new Context(locale);
 		context.setVariable("subject", subject);
 		context.setVariable("groupName", group.getName());
 		context.setVariable("memberName", member.getName());
 		context.setVariable("link", PreferencesLinks.url(properties.publicBaseUrl(), token.raw()));
-		context.setVariable("ttlText", describe(properties.memberLinks().ttl()));
+		context.setVariable("ttlText", describe(properties.memberLinks().ttl(), locale));
 
-		return new OutgoingEmail(member.getEmail(), groupName + " via GroupLoom",
+		return new OutgoingEmail(member.getEmail(), messages.getMessage("mail.sender", new Object[] { groupName }, locale),
 				requestedBy == null ? null : requestedBy.getEmail(), subject,
 				templates.process("preferences-link.txt", context),
 				templates.process("preferences-link.html", context));
@@ -67,18 +72,20 @@ public class PreferencesLinkEmailComposer implements EmailComposer {
 		return value.replace("\r", "").replace("\n", "");
 	}
 
-	private static String describe(Duration ttl) {
+	private String describe(Duration ttl, Locale locale) {
 		if (ttl.toMinutes() % (24 * 60) == 0) {
-			return plural(ttl.toDays(), "day");
+			return plural("days", ttl.toDays(), locale);
 		}
 		if (ttl.toMinutes() % 60 == 0) {
-			return plural(ttl.toHours(), "hour");
+			return plural("hours", ttl.toHours(), locale);
 		}
-		return plural(ttl.toMinutes(), "minute");
+		return plural("minutes", ttl.toMinutes(), locale);
 	}
 
-	private static String plural(long n, String unit) {
-		return n + " " + unit + (n == 1 ? "" : "s");
+	// One/other, as the languages we send in need. The number is passed as text so it is never grouped ("1,000").
+	private String plural(String unit, long n, Locale locale) {
+		String key = "mail.ttl." + unit + (n == 1 ? ".one" : ".other");
+		return messages.getMessage(key, new Object[] { String.valueOf(n) }, locale);
 	}
 
 }
