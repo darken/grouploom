@@ -113,14 +113,14 @@ describe('notification text in Japanese', () => {
   it('names each kind', () => {
     expect(kindLabel('INVITATION')).toBe('招待')
     expect(kindLabel('REMINDER')).toBe('リマインダー')
-    expect(kindLabel('CANCELLATION')).toBe('キャンセル通知')
+    expect(kindLabel('CANCELLATION')).toBe('中止のお知らせ')
   })
 
   it.each([
-    [15, '15分前'],
-    [120, '2時間前'],
-    [1440, '1日前'],
-    [20160, '2週間前'],
+    [15, '開始15分前'],
+    [120, '開始2時間前'],
+    [1440, '開始1日前'],
+    [20160, '開始2週間前'],
   ])('%i minutes reads "%s"', (minutes, text) => {
     expect(describeOffset(minutes)).toBe(text)
   })
@@ -128,7 +128,7 @@ describe('notification text in Japanese', () => {
   it('says "Now" for a notification that was due when it was created', () => {
     const n = notification({ sendAt: '2026-10-01T12:00:10Z', localSendAt: '2026-10-01T14:00:10' })
 
-    expect(describeTiming(n)).toBe('すぐに')
+    expect(describeTiming(n)).toBe('今すぐ')
   })
 
   it('formats a custom time in the event zone', () => {
@@ -143,9 +143,9 @@ describe('notification text in Japanese', () => {
       delivery: { pending: 0, sent: 15, failed: 3 },
     })
 
-    expect(describeStatus(notification())).toBe('予定 · 10月31日(土) 10:00')
+    expect(describeStatus(notification())).toBe('送信予定 · 10月31日(土) 10:00')
     expect(describeStatus(notification({ status: 'SENDING' }))).toBe('送信中…')
-    expect(describeStatus(notification({ status: 'CANCELLED' }))).toBe('キャンセル済み')
+    expect(describeStatus(notification({ status: 'CANCELLED' }))).toBe('取り消し済み')
     expect(describeStatus(sent)).toBe('11月1日に送信 · 受信者18人 · 失敗3件')
     expect(describeStatus({ ...sent, recipientCount: 0, delivery: { pending: 0, sent: 0, failed: 0 } })).toBe('通知する相手がいません')
   })

@@ -18,19 +18,19 @@
     "kind": {
       "INVITATION": "招待",
       "REMINDER": "リマインダー",
-      "CANCELLATION": "キャンセル通知"
+      "CANCELLATION": "中止のお知らせ"
     },
     "offset": {
-      "minutes": "{n}分前",
-      "hours": "{n}時間前",
-      "days": "{n}日前",
-      "weeks": "{n}週間前"
+      "minutes": "開始{n}分前",
+      "hours": "開始{n}時間前",
+      "days": "開始{n}日前",
+      "weeks": "開始{n}週間前"
     },
-    "now": "すぐに",
+    "now": "今すぐ",
     "status": {
-      "scheduled": "予定 · {when}",
+      "scheduled": "送信予定 · {when}",
       "sending": "送信中…",
-      "cancelled": "キャンセル済み",
+      "cancelled": "取り消し済み",
       "noRecipients": "通知する相手がいません",
       "sent": "{date}に送信",
       "sentWithCount": "{date}に送信 · {count}"
