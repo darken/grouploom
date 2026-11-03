@@ -4,6 +4,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 
@@ -16,8 +17,9 @@ import io.grouploom.backend.membertoken.MemberTokenService;
 public class EventCancellationEmailComposer extends EventEmailComposerSupport {
 
 	public EventCancellationEmailComposer(@Qualifier("mailTemplateEngine") TemplateEngine templates,
-			AppProperties properties, MemberTokenService memberTokens, AttendanceRepository attendances) {
-		super(templates, properties, memberTokens, attendances);
+			AppProperties properties, MemberTokenService memberTokens, AttendanceRepository attendances,
+			MessageSource messages) {
+		super(templates, properties, memberTokens, attendances, messages);
 	}
 
 	@Override
@@ -27,9 +29,11 @@ public class EventCancellationEmailComposer extends EventEmailComposerSupport {
 
 	@Override
 	public OutgoingEmail compose(EmailOutboxEntry entry) {
+		Locale locale = localeOf(entry);
 		Event event = entry.getEvent();
-		String subject = "Cancelled: " + event.getTitle() + " on " + EventTimeText.date(event.getStartsAt(), event.getZoneId(), Locale.ENGLISH);
-		return render(entry, subject, "event-cancellation", "Cancelled", true, false);
+		String subject = message(locale, "mail.subject.cancellation", event.getTitle(),
+				EventTimeText.date(event.getStartsAt(), event.getZoneId(), locale));
+		return render(entry, subject, "event-cancellation", message(locale, "mail.status.cancelled"), true, false);
 	}
 
 }

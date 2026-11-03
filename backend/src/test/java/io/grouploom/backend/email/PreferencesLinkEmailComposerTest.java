@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.thymeleaf.TemplateEngine;
 
 import io.grouploom.backend.config.MailTemplateConfig;
+import io.grouploom.backend.config.TestMessages;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.Language;
@@ -27,7 +28,7 @@ class PreferencesLinkEmailComposerTest {
 	private static final IssuedToken TOKEN = new IssuedToken("tok_abc-123", NOW.plus(Duration.ofDays(60)));
 	private static final String LINK = "https://app.example.com/m/preferences#t=tok_abc-123";
 
-	private final TemplateEngine engine = new MailTemplateConfig().mailTemplateEngine();
+	private final TemplateEngine engine = new MailTemplateConfig().mailTemplateEngine(TestMessages.source());
 	private final MemberTokenService memberTokens = mock(MemberTokenService.class);
 	private final PreferencesLinkEmailComposer composer = new PreferencesLinkEmailComposer(engine,
 			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), memberTokens);

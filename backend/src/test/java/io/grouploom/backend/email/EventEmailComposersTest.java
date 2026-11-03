@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -22,6 +23,7 @@ import io.grouploom.backend.attendance.Attendance;
 import io.grouploom.backend.attendance.AttendanceRepository;
 import io.grouploom.backend.attendance.AttendanceResponse;
 import io.grouploom.backend.config.MailTemplateConfig;
+import io.grouploom.backend.config.TestMessages;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
@@ -47,13 +49,13 @@ class EventEmailComposersTest {
 	private static final IssuedToken UNSUBSCRIBE = new IssuedToken("unsub_tok-2", CREATED.plus(Duration.ofDays(60)));
 	private static final IssuedToken ATTENDANCE = new IssuedToken("att_tok-3", CREATED.plus(Duration.ofDays(60)));
 
-	private final TemplateEngine engine = new MailTemplateConfig().mailTemplateEngine();
+	private final TemplateEngine engine = new MailTemplateConfig().mailTemplateEngine(TestMessages.source());
 	private final MemberTokenService tokens = mock(MemberTokenService.class);
 	private final AttendanceRepository attendances = mock(AttendanceRepository.class);
 	private final EventInvitationEmailComposer invitations = new EventInvitationEmailComposer(engine,
-			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens, attendances);
+			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens, attendances, TestMessages.source());
 	private final EventCancellationEmailComposer cancellations = new EventCancellationEmailComposer(engine,
-			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens, attendances);
+			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), tokens, attendances, TestMessages.source());
 
 	private Group group;
 	private Member member;
@@ -358,6 +360,137 @@ class EventEmailComposersTest {
 		OutgoingEmail email = invitation(event("Practice", null, null), null);
 
 		assertThat(email.html()).contains("btn-fill").contains("btn-outline");
+	}
+
+	// --- Japanese: a group set to `ja` gets the same emails in Japanese ---
+
+	@Nested
+	class Japanese {
+
+		@BeforeEach
+		void japaneseGroup() {
+			group.changeLanguage(Language.JA);
+		}
+
+		private static final String JA_TIME = "11月7日(土) 10:00〜12:00 CET";
+
+		private void assertNoMissingMessages(OutgoingEmail email) {
+			assertThat(email.subject()).doesNotContain("??");
+			assertThat(email.text()).doesNotContain("??");
+			assertThat(email.html()).doesNotContain("??");
+		}
+
+		@Test
+		void invitation_hasAJapaneseSubjectSenderAndLanguage() {
+			OutgoingEmail email = invitation(event("Practice", "Bring a board", "Main hall"), "See you there");
+
+			assertThat(email.subject()).isEqualTo("Practice · 11月7日(土) 10:00");
+			assertThat(email.fromName()).isEqualTo("Chess Club(GroupLoom経由)");
+			assertThat(email.html()).contains("lang=\"ja\"").doesNotContain("lang=\"en\"");
+			for (String body : new String[] { email.text(), email.html() }) {
+				assertThat(body).contains(JA_TIME).contains("招待のお知らせ").contains("Bring a board");
+			}
+			assertNoMissingMessages(email);
+		}
+
+		@Test
+		void invitation_withoutAnAnswer_hasJapaneseButtonsAndNote() {
+			OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+			assertThat(email.html()).contains(">参加する<").contains(">参加できない<")
+				.contains("イベント開始まで回答を変更できます。").doesNotContain("Going").doesNotContain("Can't go");
+			assertThat(email.text()).contains("参加する: " + GOING_LINK).contains("参加できない: " + NOT_GOING_LINK)
+				.contains("イベント開始まで回答を変更できます。").doesNotContain("Going");
+			assertNoMissingMessages(email);
+		}
+
+		@Test
+		void invitation_forAMemberWhoIsGoing_saysSoInJapanese() {
+			Event e = event("Practice", null, null);
+			answered(e, AttendanceResponse.GOING);
+
+			OutgoingEmail email = invitation(e, null);
+
+			assertThat(email.html()).contains("参加と回答済みです").contains("回答を変更する").contains(CHANGE_LINK);
+			assertThat(email.text()).contains("参加と回答済みです。").contains("回答を変更する: " + CHANGE_LINK);
+			assertNoMissingMessages(email);
+		}
+
+		@Test
+		void invitation_forAMemberWhoCannotGo_saysSoInJapanese() {
+			Event e = event("Practice", null, null);
+			answered(e, AttendanceResponse.NOT_GOING);
+
+			OutgoingEmail email = invitation(e, null);
+
+			assertThat(email.html()).contains("不参加と回答済みです").contains("回答を変更する");
+			assertThat(email.text()).contains("不参加と回答済みです。");
+			assertNoMissingMessages(email);
+		}
+
+		@Test
+		void invitation_footerIsJapaneseInHtmlAndText() {
+			OutgoingEmail email = invitation(event("Practice", null, null), null);
+
+			assertThat(email.html()).contains("Chess Clubのメンバーなので、このメールをお送りしています。").contains("受け取るイベントを選ぶ")
+				.contains("https://app.example.com/m/preferences#t=pref_tok-1");
+			assertThat(email.text()).contains("Chess Clubのメンバーなので、このメールをお送りしています。")
+				.contains("受け取るイベントを選ぶ:\nhttps://app.example.com/m/preferences#t=pref_tok-1");
+			assertThat(email.html()).doesNotContain("You're getting this");
+		}
+
+		@Test
+		void invitation_htmlFontStackFallsBackToJapaneseFonts() {
+			assertThat(invitation(event("Practice", null, null), null).html()).contains("'Hiragino Sans'")
+				.contains("'Hiragino Kaku Gothic ProN'").contains("'Yu Gothic'").contains("Meiryo");
+		}
+
+		@Test
+		void reminder_tomorrow_saysTomorrowInJapanese() {
+			OutgoingEmail email = reminder(event("Practice", null, null), Instant.parse("2026-11-06T09:00:00Z"));
+
+			assertThat(email.subject()).isEqualTo("リマインダー：「Practice」は明日10:00からです");
+			assertThat(email.html()).contains("リマインダー").contains(JA_TIME);
+			assertThat(email.text()).contains("リマインダー").contains(JA_TIME);
+			assertNoMissingMessages(email);
+		}
+
+		@Test
+		void reminder_sameDay_saysToday() {
+			assertThat(reminder(event("Practice", null, null), Instant.parse("2026-11-07T06:00:00Z")).subject())
+				.isEqualTo("リマインダー：「Practice」は今日10:00からです");
+		}
+
+		@Test
+		void reminder_furtherAhead_namesTheDate() {
+			assertThat(reminder(event("Practice", null, null), Instant.parse("2026-11-01T06:00:00Z")).subject())
+				.isEqualTo("リマインダー：「Practice」は11月7日(土)の10:00からです");
+		}
+
+		@Test
+		void cancellation_isJapaneseWithoutAnAttendanceBlock() {
+			OutgoingEmail email = cancellation(event("Practice", null, "Main hall"), "The gym is closed");
+
+			assertThat(email.subject()).isEqualTo("中止：「Practice」(11月7日(土))");
+			assertThat(email.fromName()).isEqualTo("Chess Club(GroupLoom経由)");
+			for (String body : new String[] { email.text(), email.html() }) {
+				assertThat(body).contains("中止").contains("The gym is closed").contains(JA_TIME)
+					.contains("Chess Clubのメンバーなので");
+			}
+			assertThat(email.html()).doesNotContain("回答を変更する").contains("lang=\"ja\"");
+			assertNoMissingMessages(email);
+		}
+
+		@Test
+		void aLanguageChange_appliesToTheNextCompose() {
+			Event e = event("Practice", null, null);
+			assertThat(invitation(e, null).subject()).isEqualTo("Practice · 11月7日(土) 10:00");
+
+			group.changeLanguage(Language.EN);
+
+			assertThat(invitation(e, null).subject()).isEqualTo("Practice · Sat, Nov 7, 10:00");
+		}
+
 	}
 
 }

@@ -1,6 +1,6 @@
 [[${groupName}]]
 
-Cancelled
+[[${statusLabel}]]
 [[${title}]]
 [[${timeLine}]]
 [# th:if="${location != null}"]
@@ -14,6 +14,6 @@ Cancelled
 [/]
 
 --
-You're getting this because you're a member of [[${groupName}]].
-Choose which events you hear about:
+[(#{mail.footer.reason(${groupName})})]
+[(#{mail.footer.choose})]:
 [[${preferencesLink}]]

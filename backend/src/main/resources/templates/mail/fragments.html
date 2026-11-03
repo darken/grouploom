@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en" th:fragment="layout(content)">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:fragment="layout(content)">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -31,12 +31,12 @@
     <td align="center" style="padding:32px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
         <tr>
-          <td class="card" style="background-color:#ffffff;border-radius:16px;padding:40px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+          <td class="card" style="background-color:#ffffff;border-radius:16px;padding:40px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;">
             <p class="secondary" th:text="${groupName}" style="margin:0 0 20px 0;font-size:14px;line-height:20px;color:#6e6e73;">Group</p>
             <th:block th:replace="${content}">content</th:block>
             <p class="secondary" style="margin:32px 0 0 0;font-size:13px;line-height:20px;color:#6e6e73;">
-              You're getting this because you're a member of [[${groupName}]].
-              <a class="link" th:href="${preferencesLink}" href="#" style="color:#0066cc;text-decoration:none;">Choose which events you hear about</a>
+              <span th:utext="#{mail.footer.reason(${#strings.escapeXml(groupName)})}">You're getting this because you're a member of Group.</span>
+              <a class="link" th:href="${preferencesLink}" th:text="#{mail.footer.choose}" href="#" style="color:#0066cc;text-decoration:none;">Choose which events you hear about</a>
             </p>
           </td>
         </tr>

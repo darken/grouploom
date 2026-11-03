@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.context.MessageSource;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
@@ -29,13 +30,24 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 	private final AppProperties properties;
 	private final MemberTokenService memberTokens;
 	private final AttendanceRepository attendances;
+	private final MessageSource messages;
 
 	EventEmailComposerSupport(TemplateEngine templates, AppProperties properties, MemberTokenService memberTokens,
-			AttendanceRepository attendances) {
+			AttendanceRepository attendances, MessageSource messages) {
+		this.messages = messages;
 		this.templates = templates;
 		this.properties = properties;
 		this.memberTokens = memberTokens;
 		this.attendances = attendances;
+	}
+
+	/** The group's language, read when the email is composed so a change also applies to emails already queued. */
+	static Locale localeOf(EmailOutboxEntry entry) {
+		return entry.getGroup().getLanguage().toLocale();
+	}
+
+	String message(Locale locale, String key, Object... args) {
+		return messages.getMessage(key, args, locale);
 	}
 
 	/**
@@ -44,12 +56,13 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 	 */
 	OutgoingEmail render(EmailOutboxEntry entry, String subject, String template, String statusLabel, boolean cancelled,
 			boolean includeAttendance) {
+		Locale locale = localeOf(entry);
 		Event event = entry.getEvent();
 		String note = entry.getNotification() == null ? null : blankToNull(entry.getNotification().getMessage());
 		IssuedToken preferences = memberTokens.issue(entry.getMember(), MemberTokenPurpose.PREFERENCES);
 		IssuedToken unsubscribe = memberTokens.issue(entry.getMember(), MemberTokenPurpose.UNSUBSCRIBE);
 
-		Context context = new Context(Locale.ENGLISH);
+		Context context = new Context(locale);
 		context.setVariable("subject", subject);
 		context.setVariable("groupName", entry.getGroup().getName());
 		context.setVariable("memberName", entry.getMember().getName());
@@ -58,7 +71,7 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 		context.setVariable("typeName", event.getEventType().getName());
 		context.setVariable("typeColor", hex(event.getEventType().getColor()));
 		context.setVariable("title", event.getTitle());
-		context.setVariable("timeLine", EventTimeText.range(event.getStartsAt(), event.getEndsAt(), event.getZoneId(), Locale.ENGLISH));
+		context.setVariable("timeLine", EventTimeText.range(event.getStartsAt(), event.getEndsAt(), event.getZoneId(), locale));
 		context.setVariable("location", blankToNull(event.getLocation()));
 		context.setVariable("description", blankToNull(event.getDescription()));
 		context.setVariable("note", note);
@@ -74,7 +87,7 @@ abstract class EventEmailComposerSupport implements EmailComposer {
 
 		String groupName = PreferencesLinkEmailComposer.headerSafe(entry.getGroup().getName());
 		var requestedBy = entry.getRequestedBy();
-		return new OutgoingEmail(entry.getMember().getEmail(), groupName + " via GroupLoom",
+		return new OutgoingEmail(entry.getMember().getEmail(), message(locale, "mail.sender", groupName),
 				requestedBy == null ? null : requestedBy.getEmail(), PreferencesLinkEmailComposer.headerSafe(subject),
 				templates.process(template + ".txt", context), templates.process(template + ".html", context), headers);
 	}

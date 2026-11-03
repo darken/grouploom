@@ -1,6 +1,6 @@
 [[${groupName}]]
 
-You're invited
+[[${statusLabel}]]
 [[${title}]]
 [[${timeLine}]]
 [# th:if="${location != null}"]
@@ -14,21 +14,21 @@ You're invited
 [/]
 
 [# th:if="${currentResponse == null}"]
-Going: [(${goingLink})]
-Can't go: [(${notGoingLink})]
+[(#{mail.action.going})]: [(${goingLink})]
+[(#{mail.action.not-going})]: [(${notGoingLink})]
 
-You can change your answer until the event starts.
+[(#{mail.reply.note})]
 [/]
 [# th:if="${currentResponse == 'GOING'}"]
-You're going.
-Change answer: [(${changeLink})]
+[(#{mail.reply.going.text})]
+[(#{mail.action.change})]: [(${changeLink})]
 [/]
 [# th:if="${currentResponse == 'NOT_GOING'}"]
-You said you can't go.
-Change answer: [(${changeLink})]
+[(#{mail.reply.not-going.text})]
+[(#{mail.action.change})]: [(${changeLink})]
 [/]
 
 --
-You're getting this because you're a member of [[${groupName}]].
-Choose which events you hear about:
+[(#{mail.footer.reason(${groupName})})]
+[(#{mail.footer.choose})]:
 [[${preferencesLink}]]
