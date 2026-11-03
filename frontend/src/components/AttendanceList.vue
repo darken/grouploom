@@ -50,7 +50,7 @@ const when = (iso: string) => relativeTime(iso, props.now)
         <p class="text-sm text-[var(--app-muted)]">
           <span data-answer :class="row.response ? ANSWERS[row.response].class : ''">{{ row.response ? ANSWERS[row.response].label() : t('attendance.noReply') }}</span>
           <template v-if="row.note">
-            <span data-note class="whitespace-pre-line"> “{{ row.note }}”</span>
+            <span data-note class="whitespace-pre-line"> {{ t('common.quoted', { text: row.note }) }}</span>
           </template>
           <template v-if="row.source === 'ORGANIZER'"> · {{ t('attendance.byOrganizer') }}</template>
           <template v-if="row.respondedAt"> · <time :datetime="row.respondedAt">{{ when(row.respondedAt) }}</time></template>

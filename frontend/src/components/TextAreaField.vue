@@ -39,7 +39,7 @@ const showCounter = computed(() => props.maxlength !== undefined && model.value.
       <p v-if="error" :id="`${id}-error`" class="text-[var(--app-danger)]">{{ error }}</p>
       <p v-else-if="hint" :id="`${id}-hint`" class="text-[var(--app-muted)]">{{ hint }}</p>
       <span v-else />
-      <span v-if="showCounter" class="tabular-nums text-[var(--app-muted)]">{{ model.length }}/{{ maxlength }}</span>
+      <span v-if="showCounter" class="tabular-nums text-[var(--app-muted)]">{{ `${model.length}/${maxlength}` }}</span>
     </div>
   </div>
 </template>

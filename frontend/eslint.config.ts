@@ -32,6 +32,24 @@ export default defineConfigWithVueTs(
     files: ['src/**/__tests__/*'],
   },
 
+  {
+    name: 'app/i18n',
+    files: ['src/**/*.vue'],
+    ignores: ['src/**/__tests__/**'],
+    rules: {
+      // Every visible string comes from src/i18n/locales; only symbols and the product name may stay bare.
+      'vue/no-bare-strings-in-template': [
+        'error',
+        {
+          allowlist: ['·', '–', '…', 'GroupLoom'],
+          attributes: {
+            '/.+/': ['title', 'aria-label', 'aria-placeholder', 'placeholder', 'label', 'description', 'hint', 'alt'],
+          },
+        },
+      ],
+    },
+  },
+
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
   skipFormatting,

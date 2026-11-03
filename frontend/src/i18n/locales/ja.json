@@ -81,7 +81,8 @@
     "reload": "再読み込み",
     "cantUndo": "この操作は元に戻せません。",
     "edit": "編集",
-    "staleTitle": "他のユーザーが変更しました"
+    "staleTitle": "他のユーザーが変更しました",
+    "quoted": "「{text}」"
   },
   "nav": {
     "label": "メインメニュー",
@@ -125,7 +126,8 @@
     },
     "invalidValue": "値が正しくありません。",
     "requestFailed": "リクエストに失敗しました。",
-    "generic": "問題が発生しました"
+    "generic": "問題が発生しました",
+    "fieldMessage": "{field}: {message}"
   },
   "auth": {
     "email": "メールアドレス",

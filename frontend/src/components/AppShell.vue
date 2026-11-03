@@ -15,7 +15,7 @@ const version = computed(() => system.info?.version)
       <slot />
     </main>
     <footer class="mx-auto w-full max-w-5xl px-6 py-8 text-sm text-[var(--app-muted)]">
-      <span v-if="version">GroupLoom v{{ version }}</span>
+      <span v-if="version">{{ `GroupLoom v${version}` }}</span>
     </footer>
   </div>
 </template>

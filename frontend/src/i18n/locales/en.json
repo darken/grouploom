@@ -81,7 +81,8 @@
     "reload": "Reload",
     "cantUndo": "This can't be undone.",
     "edit": "Edit",
-    "staleTitle": "Changed by someone else"
+    "staleTitle": "Changed by someone else",
+    "quoted": "“{text}”"
   },
   "nav": {
     "label": "Primary",
@@ -125,7 +126,8 @@
     },
     "invalidValue": "Invalid value.",
     "requestFailed": "Request failed",
-    "generic": "Something went wrong"
+    "generic": "Something went wrong",
+    "fieldMessage": "{field}: {message}"
   },
   "auth": {
     "email": "Email",

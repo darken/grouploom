@@ -27,7 +27,7 @@ const sorted = computed(() => sortNotifications(props.items))
             </template>
           </span>
         </p>
-        <p v-if="n.message" data-note class="mt-0.5 truncate text-sm text-[var(--app-muted)]">“{{ n.message }}”</p>
+        <p v-if="n.message" data-note class="mt-0.5 truncate text-sm text-[var(--app-muted)]">{{ t('common.quoted', { text: n.message }) }}</p>
       </div>
       <OverflowMenu
         v-if="n.status === 'SCHEDULED'"

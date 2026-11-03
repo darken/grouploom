@@ -20,7 +20,7 @@ defineProps<{ error: ApiError }>()
       <p class="font-medium">{{ error.problem.title ?? t('errors.generic') }}</p>
       <p v-if="error.problem.detail" class="text-[var(--app-muted)]">{{ error.problem.detail }}</p>
       <ul v-if="error.problem.errors?.length" class="mt-2 list-disc pl-5 text-[var(--app-muted)]">
-        <li v-for="item in error.problem.errors" :key="item.field">{{ item.field }}: {{ item.message }}</li>
+        <li v-for="item in error.problem.errors" :key="item.field">{{ t('errors.fieldMessage', { field: item.field, message: item.message }) }}</li>
       </ul>
     </div>
     <div class="shrink-0 self-center empty:hidden"><slot /></div>
