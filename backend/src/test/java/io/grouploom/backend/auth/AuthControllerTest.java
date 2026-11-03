@@ -28,6 +28,7 @@ import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.InvalidCredentialsException;
 import io.grouploom.backend.error.InvalidRefreshTokenException;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.dto.GroupSummary;
 import io.grouploom.backend.user.dto.MeResponse;
@@ -48,7 +49,7 @@ class AuthControllerTest {
 
 	private static AuthResult result() {
 		MeResponse me = new MeResponse(UUID.randomUUID(), "ada@example.com", "Ada", Role.OWNER,
-				new GroupSummary(UUID.randomUUID(), "Chess Club"));
+				new GroupSummary(UUID.randomUUID(), "Chess Club", Language.EN));
 		return new AuthResult(new AuthResponse("jwt", 900, me), "raw-refresh");
 	}
 
@@ -67,6 +68,26 @@ class AuthControllerTest {
 					org.hamcrest.Matchers.containsString("SameSite=Strict"),
 					org.hamcrest.Matchers.containsString("Path=/api/auth"),
 					org.hamcrest.Matchers.containsString("Secure"))));
+	}
+
+	@Test
+	void signUp_withUnsupportedLanguage_returns400WithFieldError() throws Exception {
+		mockMvc.perform(api(post("/api/auth/signup")).contentType(MediaType.APPLICATION_JSON).content(
+				"{\"groupName\":\"Chess Club\",\"displayName\":\"Ada\",\"email\":\"ada@example.com\",\"password\":\"correct horse battery\",\"language\":\"fr\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.errors[?(@.field=='language')]").exists());
+	}
+
+	@Test
+	void signUp_withJapanese_passesTheLanguageOn() throws Exception {
+		given(service.signUp(any())).willReturn(result());
+
+		mockMvc.perform(api(post("/api/auth/signup")).contentType(MediaType.APPLICATION_JSON).content(
+				"{\"groupName\":\"Chess Club\",\"displayName\":\"Ada\",\"email\":\"ada@example.com\",\"password\":\"correct horse battery\",\"language\":\"ja\"}"))
+			.andExpect(status().isCreated());
+
+		verify(service).signUp(org.mockito.ArgumentMatchers.argThat(r -> r.language() == Language.JA));
 	}
 
 	@Test

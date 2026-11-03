@@ -15,7 +15,7 @@ public record MeResponse(
 
 	public static MeResponse from(User user) {
 		return new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole(),
-				new GroupSummary(user.getGroup().getId(), user.getGroup().getName()));
+				new GroupSummary(user.getGroup().getId(), user.getGroup().getName(), user.getGroup().getLanguage()));
 	}
 
 }

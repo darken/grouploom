@@ -51,7 +51,8 @@ public class AuthService {
 		if (users.existsByEmailIgnoreCase(email)) {
 			throw new ConflictException("An account with this email already exists.");
 		}
-		Group group = groups.save(new Group(request.groupName().trim(), Language.EN, clock.instant()));
+		Group group = groups.save(new Group(request.groupName().trim(),
+				request.language() != null ? request.language() : Language.EN, clock.instant()));
 		User user = users.save(new User(group, email, request.displayName().trim(),
 				passwordEncoder.encode(request.password()), Role.OWNER, clock.instant()));
 		return result(user, refreshTokens.issue(user));

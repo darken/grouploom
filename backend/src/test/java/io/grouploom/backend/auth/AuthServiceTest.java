@@ -72,7 +72,7 @@ class AuthServiceTest {
 
 	@Test
 	void signUp_withNewEmail_createsGroupAndOwnerWithHashedPassword() {
-		var result = service.signUp(new SignUpRequest("Chess Club", "Ada", "ada@example.com", "correct horse battery"));
+		var result = service.signUp(new SignUpRequest("Chess Club", "Ada", "ada@example.com", "correct horse battery", null));
 
 		ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 		verify(users).save(captor.capture());
@@ -86,8 +86,26 @@ class AuthServiceTest {
 	}
 
 	@Test
+	void signUp_withJapanese_storesAJapaneseGroup() {
+		service.signUp(new SignUpRequest("Club", "Ada", "ada@example.com", "correct horse battery", Language.JA));
+
+		ArgumentCaptor<Group> saved = ArgumentCaptor.forClass(Group.class);
+		verify(groups).save(saved.capture());
+		assertThat(saved.getValue().getLanguage()).isEqualTo(Language.JA);
+	}
+
+	@Test
+	void signUp_withoutLanguage_storesAnEnglishGroup() {
+		service.signUp(new SignUpRequest("Club", "Ada", "ada@example.com", "correct horse battery", null));
+
+		ArgumentCaptor<Group> saved = ArgumentCaptor.forClass(Group.class);
+		verify(groups).save(saved.capture());
+		assertThat(saved.getValue().getLanguage()).isEqualTo(Language.EN);
+	}
+
+	@Test
 	void signUp_withMixedCaseEmail_normalizesEmail() {
-		service.signUp(new SignUpRequest("Club", "Ada", "  Ada@Example.COM ", "correct horse battery"));
+		service.signUp(new SignUpRequest("Club", "Ada", "  Ada@Example.COM ", "correct horse battery", null));
 
 		ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 		verify(users).save(captor.capture());
@@ -98,7 +116,7 @@ class AuthServiceTest {
 	void signUp_withExistingEmail_throwsConflict() {
 		given(users.existsByEmailIgnoreCase("ada@example.com")).willReturn(true);
 
-		assertThatThrownBy(() -> service.signUp(new SignUpRequest("Club", "Ada", "ADA@example.com", "correct horse battery")))
+		assertThatThrownBy(() -> service.signUp(new SignUpRequest("Club", "Ada", "ADA@example.com", "correct horse battery", null)))
 			.isInstanceOf(ConflictException.class);
 		verify(groups, never()).save(any());
 	}

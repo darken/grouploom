@@ -25,6 +25,7 @@ import io.grouploom.backend.config.SecurityConfig;
 import io.grouploom.backend.error.GlobalExceptionHandler;
 import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.user.controller.MeController;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.dto.GroupSummary;
 import io.grouploom.backend.user.dto.MeResponse;
 import io.grouploom.backend.user.service.CurrentUserService;
@@ -42,13 +43,14 @@ class MeControllerTest {
 	@Test
 	void me_withValidJwt_returnsCurrentUser() throws Exception {
 		given(service.me(any())).willReturn(new MeResponse(USER_ID, "ada@example.com", "Ada", Role.OWNER,
-				new GroupSummary(GROUP_ID, "Chess Club")));
+				new GroupSummary(GROUP_ID, "Chess Club", Language.JA)));
 
 		mockMvc.perform(get("/api/me").servletPath("/api")
 				.with(jwt().jwt(j -> j.subject(USER_ID.toString()).claim("gid", GROUP_ID.toString()).claim("role", "OWNER"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.email").value("ada@example.com"))
-			.andExpect(jsonPath("$.group.name").value("Chess Club"));
+			.andExpect(jsonPath("$.group.name").value("Chess Club"))
+			.andExpect(jsonPath("$.group.language").value("ja"));
 	}
 
 	@Test
