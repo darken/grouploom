@@ -28,6 +28,7 @@ import io.grouploom.backend.auth.service.RefreshTokenService;
 import io.grouploom.backend.config.AuthProperties;
 import io.grouploom.backend.error.InvalidRefreshTokenException;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
 
@@ -45,7 +46,7 @@ class RefreshTokenServiceTest {
 	void setUp() {
 		service = new RefreshTokenService(repository, new AuthProperties(Duration.ofDays(14), true),
 				Clock.fixed(NOW, ZoneOffset.UTC));
-		Group group = new Group("Club", NOW);
+		Group group = new Group("Club", Language.EN, NOW);
 		user = new User(group, "ada@example.com", "Ada", "hash", Role.OWNER, NOW);
 		ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
 	}

@@ -32,6 +32,7 @@ import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.membertoken.MemberTokenService;
 import io.grouploom.backend.membertoken.MemberTokenService.ResolvedAttendanceToken;
@@ -53,7 +54,7 @@ class PublicAttendanceServiceTest {
 	@BeforeEach
 	void setUp() {
 		service = new PublicAttendanceService(tokens, attendances, Clock.fixed(NOW, ZoneOffset.UTC));
-		group = new Group("Chess Club", NOW);
+		group = new Group("Chess Club", Language.EN, NOW);
 		ReflectionTestUtils.setField(group, "id", UUID.randomUUID());
 		member = new Member(group, "Ana", "ana@example.com", NOW);
 		ReflectionTestUtils.setField(member, "id", UUID.randomUUID());

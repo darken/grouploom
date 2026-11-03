@@ -27,6 +27,7 @@ import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.membertoken.MemberTokenPurpose;
 import io.grouploom.backend.membertoken.MemberTokenService;
@@ -61,7 +62,7 @@ class EventEmailComposersTest {
 
 	@BeforeEach
 	void setUp() {
-		group = new Group("Chess Club", CREATED);
+		group = new Group("Chess Club", Language.EN, CREATED);
 		member = new Member(group, "Ana", "ana@example.com", CREATED);
 		organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, CREATED);
 		type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, CREATED);

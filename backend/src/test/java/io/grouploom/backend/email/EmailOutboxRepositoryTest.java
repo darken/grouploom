@@ -29,6 +29,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.grouploom.backend.TestcontainersConfiguration;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.member.MemberRepository;
 import jakarta.persistence.EntityManager;
@@ -53,7 +54,7 @@ class EmailOutboxRepositoryTest {
 
 	private Member member(String email) {
 		if (group == null) {
-			group = groups.save(new Group("Club", NOW));
+			group = groups.save(new Group("Club", Language.EN, NOW));
 		}
 		return members.saveAndFlush(new Member(group, "Ana", email, NOW));
 	}

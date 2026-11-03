@@ -36,6 +36,7 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -58,7 +59,7 @@ class EventNotificationRepositoryTest {
 
 	private Event event() {
 		if (event == null) {
-			group = groups.save(new Group("Club", NOW));
+			group = groups.save(new Group("Club", Language.EN, NOW));
 			type = eventTypes.save(new EventType(group, "Practice", null, EventTypeColor.GREEN, null, NOW));
 			Instant start = NOW.plus(Duration.ofDays(5));
 			event = events.saveAndFlush(

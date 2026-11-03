@@ -24,6 +24,7 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.member.MemberRepository;
 import io.grouploom.backend.notification.EventNotification;
@@ -54,7 +55,7 @@ class EmailOutboxFanOutRepositoryTest {
 
 	@BeforeEach
 	void setUp() {
-		group = groups.save(new Group("Club", NOW));
+		group = groups.save(new Group("Club", Language.EN, NOW));
 		practice = eventTypes.save(new EventType(group, "Practice", null, EventTypeColor.GREEN, null, NOW));
 		social = eventTypes.save(new EventType(group, "Social", null, EventTypeColor.BLUE, null, NOW));
 		Instant start = NOW.plus(Duration.ofDays(5));
@@ -98,7 +99,7 @@ class EmailOutboxFanOutRepositoryTest {
 		optOut(optedOut, practice);
 		Member optedOutOfOtherType = member();
 		optOut(optedOutOfOtherType, social);
-		Group other = groups.save(new Group("Other", NOW));
+		Group other = groups.save(new Group("Other", Language.EN, NOW));
 		member(other);
 
 		int inserted = fanOutInvitation();
@@ -199,7 +200,7 @@ class EmailOutboxFanOutRepositoryTest {
 		pause(member());
 		optOut(member(), practice);
 		optOut(member(), social);
-		member(groups.save(new Group("Other", NOW)));
+		member(groups.save(new Group("Other", Language.EN, NOW)));
 
 		int eligible = outbox.countEligibleRecipients(group.getId(), practice.getId(), event.getId(), "EVENT_INVITATION");
 

@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 
 import io.grouploom.backend.TestcontainersConfiguration;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.group.GroupRepository;
 
 @DataJpaTest
@@ -30,7 +31,7 @@ class MemberRepositoryTest {
 	@Autowired MemberRepository members;
 
 	private Group group(String name) {
-		return groups.save(new Group(name, NOW));
+		return groups.save(new Group(name, Language.EN, NOW));
 	}
 
 	private Member member(Group group, String name, String email) {

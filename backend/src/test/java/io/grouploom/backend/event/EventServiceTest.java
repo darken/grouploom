@@ -43,6 +43,7 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.notification.EventNotificationRepository;
 import io.grouploom.backend.notification.EventNotificationService;
 import io.grouploom.backend.notification.NotificationStatus;
@@ -70,7 +71,7 @@ class EventServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		group = new Group("Club", CREATED);
+		group = new Group("Club", Language.EN, CREATED);
 		ReflectionTestUtils.setField(group, "id", groupId);
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		practice = eventType("Practice");

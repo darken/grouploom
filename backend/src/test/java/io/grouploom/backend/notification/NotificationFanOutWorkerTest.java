@@ -31,6 +31,7 @@ import io.grouploom.backend.event.EventRepository;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
 
@@ -54,7 +55,7 @@ class NotificationFanOutWorkerTest {
 
 	@BeforeEach
 	void setUp() {
-		group = new Group("Club", CREATED);
+		group = new Group("Club", Language.EN, CREATED);
 		ReflectionTestUtils.setField(group, "id", UUID.randomUUID());
 		organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, CREATED);
 		ReflectionTestUtils.setField(organizer, "id", UUID.randomUUID());

@@ -40,6 +40,7 @@ import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.notification.dto.EventNotificationResponse;
 import io.grouploom.backend.notification.dto.NotificationTiming;
 import io.grouploom.backend.notification.dto.ScheduleNotificationRequest;
@@ -72,7 +73,7 @@ class EventNotificationServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		group = new Group("Club", CREATED);
+		group = new Group("Club", Language.EN, CREATED);
 		ReflectionTestUtils.setField(group, "id", groupId);
 		user = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, CREATED);
 		type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, CREATED);

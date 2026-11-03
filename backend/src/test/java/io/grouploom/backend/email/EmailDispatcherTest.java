@@ -31,6 +31,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import io.grouploom.backend.config.AppProperties;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
@@ -59,7 +60,7 @@ class EmailDispatcherTest {
 		lenient().when(composer.kinds()).thenReturn(Set.of(EmailKind.PREFERENCES_LINK));
 		dispatcher = new EmailDispatcher(outbox, new EmailOutboxRecorder(outbox, properties, clock),
 				List.of(composer), gateway, properties, clock);
-		group = new Group("Club", NOW);
+		group = new Group("Club", Language.EN, NOW);
 		member = new Member(group, "Ana", "ana@example.com", NOW);
 		organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, NOW);
 		composed = new OutgoingEmail("ana@example.com", "Club via GroupLoom", "olga@example.com", "S", "t", "<p>h</p>");

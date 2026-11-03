@@ -22,6 +22,7 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.member.MemberRepository;
 import jakarta.persistence.EntityManager;
@@ -44,7 +45,7 @@ class MemberTokenRepositoryTest {
 	@Autowired EntityManager em;
 
 	private Member member(String email) {
-		Group g = groups.save(new Group("Club", NOW));
+		Group g = groups.save(new Group("Club", Language.EN, NOW));
 		return members.saveAndFlush(new Member(g, "Ana", email, NOW));
 	}
 

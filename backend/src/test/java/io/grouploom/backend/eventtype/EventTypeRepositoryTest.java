@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.grouploom.backend.TestcontainersConfiguration;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.group.GroupRepository;
 
 @DataJpaTest
@@ -32,7 +33,7 @@ class EventTypeRepositoryTest {
 	@Autowired JdbcTemplate jdbc;
 
 	private Group group(String name) {
-		return groups.save(new Group(name, NOW));
+		return groups.save(new Group(name, Language.EN, NOW));
 	}
 
 	private EventType type(Group group, String name) {

@@ -17,6 +17,7 @@ import io.grouploom.backend.error.InvalidCredentialsException;
 import io.grouploom.backend.error.InvalidRefreshTokenException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
 import io.grouploom.backend.user.dto.MeResponse;
@@ -50,7 +51,7 @@ public class AuthService {
 		if (users.existsByEmailIgnoreCase(email)) {
 			throw new ConflictException("An account with this email already exists.");
 		}
-		Group group = groups.save(new Group(request.groupName().trim(), clock.instant()));
+		Group group = groups.save(new Group(request.groupName().trim(), Language.EN, clock.instant()));
 		User user = users.save(new User(group, email, request.displayName().trim(),
 				passwordEncoder.encode(request.password()), Role.OWNER, clock.instant()));
 		return result(user, refreshTokens.issue(user));

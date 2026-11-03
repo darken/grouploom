@@ -27,6 +27,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.email.dto.EmailDeliveryStatus;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
@@ -49,7 +50,7 @@ class EmailOutboxServiceTest {
 	void setUp() {
 		service = new EmailOutboxService(outbox, users, TestProperties.app("http://localhost", Duration.ofDays(60)),
 				Clock.fixed(NOW, ZoneOffset.UTC));
-		group = new Group("Club", NOW);
+		group = new Group("Club", Language.EN, NOW);
 		member = new Member(group, "Ana", "ana@example.com", NOW);
 		ReflectionTestUtils.setField(member, "id", UUID.randomUUID());
 		organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, NOW);

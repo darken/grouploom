@@ -33,6 +33,7 @@ import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.membertoken.MemberTokenPurpose;
 import io.grouploom.backend.membertoken.MemberTokenService;
@@ -58,7 +59,7 @@ class PreferenceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		Group group = new Group("Chess Club", NOW);
+		Group group = new Group("Chess Club", Language.EN, NOW);
 		ReflectionTestUtils.setField(group, "id", groupId);
 		member = new Member(group, "Ana", "ana@example.com", NOW);
 		ReflectionTestUtils.setField(member, "id", UUID.randomUUID());

@@ -27,6 +27,7 @@ import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.security.OpaqueTokens;
 
@@ -46,7 +47,7 @@ class MemberTokenServiceTest {
 		service = new MemberTokenService(repository,
 				TestProperties.app("http://localhost:5173", TTL),
 				Clock.fixed(NOW, ZoneOffset.UTC));
-		member = new Member(new Group("Club", NOW), "Ana", "ana@example.com", NOW);
+		member = new Member(new Group("Club", Language.EN, NOW), "Ana", "ana@example.com", NOW);
 		ReflectionTestUtils.setField(member, "id", UUID.randomUUID());
 	}
 

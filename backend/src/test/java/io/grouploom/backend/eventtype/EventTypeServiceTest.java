@@ -36,6 +36,7 @@ import io.grouploom.backend.eventtype.dto.CreateEventTypeRequest;
 import io.grouploom.backend.eventtype.dto.UpdateEventTypeRequest;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.Role;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,7 +57,7 @@ class EventTypeServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		group = new Group("Club", NOW);
+		group = new Group("Club", Language.EN, NOW);
 		ReflectionTestUtils.setField(group, "id", groupId);
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		given(repository.saveAndFlush(any(EventType.class))).willAnswer(i -> i.getArgument(0));

@@ -34,6 +34,7 @@ import io.grouploom.backend.error.ConflictException;
 import io.grouploom.backend.error.InvalidCredentialsException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.user.Role;
 import io.grouploom.backend.user.User;
 import io.grouploom.backend.user.repository.UserRepository;
@@ -131,7 +132,7 @@ class AuthServiceTest {
 	}
 
 	private User existingUser() {
-		Group group = new Group("Club", NOW);
+		Group group = new Group("Club", Language.EN, NOW);
 		ReflectionTestUtils.setField(group, "id", UUID.randomUUID());
 		User user = new User(group, "ada@example.com", "Ada", encoder.encode("correct horse battery"), Role.OWNER, NOW);
 		ReflectionTestUtils.setField(user, "id", UUID.randomUUID());

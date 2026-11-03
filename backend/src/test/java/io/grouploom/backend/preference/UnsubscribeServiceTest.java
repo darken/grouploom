@@ -23,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import io.grouploom.backend.error.InvalidMemberTokenException;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.membertoken.MemberTokenPurpose;
 import io.grouploom.backend.membertoken.MemberTokenService;
@@ -41,7 +42,7 @@ class UnsubscribeServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		member = new Member(new Group("Club", CREATED), "Ana", "ana@example.com", CREATED);
+		member = new Member(new Group("Club", Language.EN, CREATED), "Ana", "ana@example.com", CREATED);
 		ReflectionTestUtils.setField(member, "id", UUID.randomUUID());
 		service = new UnsubscribeService(tokens, preferences, Clock.fixed(NOW, ZoneOffset.UTC));
 	}

@@ -10,13 +10,14 @@ import org.junit.jupiter.api.Test;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 
 class EventTest {
 
 	private static final Instant T0 = Instant.parse("2026-01-01T00:00:00Z");
 	private static final Instant START = Instant.parse("2026-06-02T10:00:00Z");
 
-	private final Group group = new Group("Club", T0);
+	private final Group group = new Group("Club", Language.EN, T0);
 	private final EventType type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, T0);
 
 	private Event event() {

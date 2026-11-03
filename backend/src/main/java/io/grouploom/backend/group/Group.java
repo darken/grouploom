@@ -21,14 +21,18 @@ public class Group {
 	@Column(nullable = false, length = 120)
 	private String name;
 
+	@Column(nullable = false, length = 10)
+	private Language language;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
 	protected Group() {
 	}
 
-	public Group(String name, Instant createdAt) {
+	public Group(String name, Language language, Instant createdAt) {
 		this.name = name;
+		this.language = language;
 		this.createdAt = createdAt;
 	}
 
@@ -38,6 +42,14 @@ public class Group {
 
 	public String getName() {
 		return name;
+	}
+
+	public Language getLanguage() {
+		return language;
+	}
+
+	public void changeLanguage(Language language) {
+		this.language = language;
 	}
 
 	public Instant getCreatedAt() {

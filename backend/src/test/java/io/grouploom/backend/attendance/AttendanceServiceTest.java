@@ -36,6 +36,7 @@ import io.grouploom.backend.event.EventRepository;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.member.MemberRepository;
 import io.grouploom.backend.user.Role;
@@ -58,7 +59,7 @@ class AttendanceServiceTest {
 	@BeforeEach
 	void setUp() {
 		service = new AttendanceService(events, members, attendances, Clock.fixed(NOW, ZoneOffset.UTC));
-		Group group = new Group("Chess Club", NOW);
+		Group group = new Group("Chess Club", Language.EN, NOW);
 		current = new CurrentUser(UUID.randomUUID(), UUID.randomUUID(), Role.ORGANIZER);
 		ReflectionTestUtils.setField(group, "id", current.groupId());
 		EventType type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, NOW);

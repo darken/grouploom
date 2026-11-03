@@ -13,6 +13,7 @@ import org.thymeleaf.TemplateEngine;
 import io.grouploom.backend.config.MailTemplateConfig;
 import io.grouploom.backend.config.TestProperties;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.membertoken.MemberTokenPurpose;
 import io.grouploom.backend.membertoken.MemberTokenService;
@@ -32,7 +33,7 @@ class PreferencesLinkEmailComposerTest {
 			TestProperties.app("https://app.example.com/", Duration.ofDays(60)), memberTokens);
 
 	private OutgoingEmail compose(String groupName, String memberName) {
-		Group group = new Group(groupName, NOW);
+		Group group = new Group(groupName, Language.EN, NOW);
 		Member member = new Member(group, memberName, "ana@example.com", NOW);
 		User organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, NOW);
 		return composer.compose(member, group, organizer, TOKEN);
@@ -50,7 +51,7 @@ class PreferencesLinkEmailComposerTest {
 
 	@Test
 	void compose_withoutRequester_hasNoReplyTo() {
-		Group group = new Group("Chess Club", NOW);
+		Group group = new Group("Chess Club", Language.EN, NOW);
 		Member member = new Member(group, "Ana", "ana@example.com", NOW);
 
 		OutgoingEmail email = composer.compose(member, group, null, TOKEN);
@@ -105,7 +106,7 @@ class PreferencesLinkEmailComposerTest {
 	void compose_formatsTtlInHoursWhenNotWholeDays() {
 		PreferencesLinkEmailComposer shortLived = new PreferencesLinkEmailComposer(engine,
 				TestProperties.app("https://app.example.com", Duration.ofHours(36)), memberTokens);
-		Group group = new Group("Chess Club", NOW);
+		Group group = new Group("Chess Club", Language.EN, NOW);
 		Member member = new Member(group, "Ana", "ana@example.com", NOW);
 
 		OutgoingEmail email = shortLived.compose(member, group, null, TOKEN);
@@ -115,7 +116,7 @@ class PreferencesLinkEmailComposerTest {
 
 	@Test
 	void compose_fromAnEntry_issuesAPreferencesTokenAndBuildsTheLink() {
-		Group group = new Group("Chess Club", NOW);
+		Group group = new Group("Chess Club", Language.EN, NOW);
 		Member member = new Member(group, "Ana", "ana@example.com", NOW);
 		User organizer = new User(group, "olga@example.com", "Olga", "hash", Role.OWNER, NOW);
 		given(memberTokens.issue(member, MemberTokenPurpose.PREFERENCES)).willReturn(TOKEN);

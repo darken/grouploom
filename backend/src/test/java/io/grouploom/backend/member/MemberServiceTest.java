@@ -47,6 +47,7 @@ import io.grouploom.backend.error.NotFoundException;
 import io.grouploom.backend.error.TooManyRequestsException;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.dto.CreateMemberRequest;
 import io.grouploom.backend.member.dto.UpdateMemberRequest;
 import io.grouploom.backend.membertoken.MemberTokenPurpose;
@@ -74,7 +75,7 @@ class MemberServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		group = new Group("Club", NOW);
+		group = new Group("Club", Language.EN, NOW);
 		ReflectionTestUtils.setField(group, "id", groupId);
 		given(groups.getReferenceById(groupId)).willReturn(group);
 		given(repository.saveAndFlush(any(Member.class))).willAnswer(i -> i.getArgument(0));

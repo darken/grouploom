@@ -12,13 +12,14 @@ import io.grouploom.backend.event.Event;
 import io.grouploom.backend.eventtype.EventType;
 import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.group.Group;
+import io.grouploom.backend.group.Language;
 
 class EventNotificationTest {
 
 	private static final Instant NOW = Instant.parse("2026-06-01T12:00:00Z");
 	private static final Instant START = Instant.parse("2026-06-10T10:00:00Z");
 
-	private final Group group = new Group("Club", NOW);
+	private final Group group = new Group("Club", Language.EN, NOW);
 	private final EventType type = new EventType(group, "Practice", null, EventTypeColor.GREEN, null, NOW);
 	private final Event event = new Event(group, type, "Practice", null, null, START, START.plusSeconds(3600), "UTC", NOW);
 

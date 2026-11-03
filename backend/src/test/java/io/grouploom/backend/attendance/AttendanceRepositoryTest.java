@@ -26,6 +26,7 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.member.MemberRepository;
 import jakarta.persistence.EntityManager;
@@ -53,7 +54,7 @@ class AttendanceRepositoryTest {
 
 	@BeforeEach
 	void setUp() {
-		group = groups.save(new Group("Club", NOW));
+		group = groups.save(new Group("Club", Language.EN, NOW));
 		type = eventTypes.save(new EventType(group, "Practice", null, EventTypeColor.GREEN, null, NOW));
 		event = event(group, "Practice");
 	}
@@ -210,7 +211,7 @@ class AttendanceRepositoryTest {
 		answer(event, cy, AttendanceResponse.NOT_GOING, null);
 		// Other events and other groups don't count.
 		answer(event(group, "Other"), ana, AttendanceResponse.NOT_GOING, null);
-		Group other = groups.save(new Group("Other", NOW));
+		Group other = groups.save(new Group("Other", Language.EN, NOW));
 		members.saveAndFlush(new Member(other, "Zed", "zed@example.com", NOW));
 
 		AttendanceSummary summary = attendances.summarize(event.getId(), group.getId());
@@ -319,7 +320,7 @@ class AttendanceRepositoryTest {
 	@Test
 	void findRows_isScopedByGroup() {
 		roster();
-		Group other = groups.save(new Group("Other", NOW));
+		Group other = groups.save(new Group("Other", Language.EN, NOW));
 		members.saveAndFlush(new Member(other, "Zed", "zed@example.com", NOW));
 
 		Page<AttendanceRow> page = attendances.findRows(event.getId(), group.getId(), AttendanceFilter.ALL, PageRequest.of(0, 50));

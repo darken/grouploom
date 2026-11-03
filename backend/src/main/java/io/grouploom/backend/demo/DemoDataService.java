@@ -24,6 +24,7 @@ import io.grouploom.backend.eventtype.EventTypeColor;
 import io.grouploom.backend.eventtype.EventTypeRepository;
 import io.grouploom.backend.group.Group;
 import io.grouploom.backend.group.GroupRepository;
+import io.grouploom.backend.group.Language;
 import io.grouploom.backend.member.Member;
 import io.grouploom.backend.member.MemberRepository;
 import io.grouploom.backend.preference.EventTypeOptOut;
@@ -88,7 +89,7 @@ public class DemoDataService {
 		Instant now = clock.instant();
 		LocalDate today = LocalDate.now(clock.withZone(ZONE));
 
-		Group group = groups.save(new Group("Riverside Running Club", now));
+		Group group = groups.save(new Group("Riverside Running Club", Language.EN, now));
 		User organizer = users.save(new User(group, email, "Sam Rivera", passwordEncoder.encode(properties.password()),
 				Role.OWNER, now));
 
