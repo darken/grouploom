@@ -6,10 +6,15 @@ import { ApiError } from '@/api/errors'
 import { useAuthStore } from '../auth'
 
 vi.mock('@/api/client', () => ({
-  api: { GET: vi.fn<() => Promise<unknown>>(), POST: vi.fn<() => Promise<unknown>>() },
+  api: {
+    GET: vi.fn<() => Promise<unknown>>(),
+    POST: vi.fn<() => Promise<unknown>>(),
+    PATCH: vi.fn<() => Promise<unknown>>(),
+  },
 }))
 
 const post = vi.mocked(api.POST) as unknown as ReturnType<typeof vi.fn>
+const patch = vi.mocked(api.PATCH) as unknown as ReturnType<typeof vi.fn>
 
 const authResponse = {
   accessToken: 'jwt',
@@ -19,7 +24,7 @@ const authResponse = {
     email: 'ada@example.com',
     displayName: 'Ada',
     role: 'OWNER',
-    group: { id: 'g1', name: 'Chess Club' },
+    group: { id: 'g1', name: 'Chess Club', language: 'en' },
   },
 }
 
@@ -31,6 +36,7 @@ describe('auth store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     post.mockReset()
+    patch.mockReset()
   })
 
   it('login sets the user, token and status on success', async () => {
@@ -44,6 +50,31 @@ describe('auth store', () => {
     expect(store.accessToken).toBe('jwt')
     expect(store.status).toBe('authenticated')
     expect(store.isAuthenticated).toBe(true)
+  })
+
+  it('updateGroupLanguage saves the language and updates the signed-in group', async () => {
+    post.mockResolvedValue({ data: authResponse, response: new Response() })
+    patch.mockResolvedValue({ data: { id: 'g1', name: 'Chess Club', language: 'ja' }, response: new Response() })
+    const store = useAuthStore()
+    await store.login({ email: 'ada@example.com', password: 'pw' })
+
+    const ok = await store.updateGroupLanguage('ja')
+
+    expect(ok).toBe(true)
+    expect(patch).toHaveBeenCalledWith('/group', { body: { language: 'ja' } })
+    expect(store.user?.group.language).toBe('ja')
+  })
+
+  it('updateGroupLanguage keeps the old language when the request fails', async () => {
+    post.mockResolvedValue({ data: authResponse, response: new Response() })
+    patch.mockResolvedValue(problem(403, { detail: 'Only the owner can change the group.' }))
+    const store = useAuthStore()
+    await store.login({ email: 'ada@example.com', password: 'pw' })
+
+    const ok = await store.updateGroupLanguage('ja')
+
+    expect(ok).toBe(false)
+    expect(store.user?.group.language).toBe('en')
   })
 
   it('login exposes an ApiError on failure', async () => {

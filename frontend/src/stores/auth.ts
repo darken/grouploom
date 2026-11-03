@@ -10,6 +10,7 @@ export type MeResponse = components['schemas']['MeResponse']
 type AuthResponse = components['schemas']['AuthResponse']
 export type SignUpInput = components['schemas']['SignUpRequest']
 export type LoginInput = components['schemas']['LoginRequest']
+export type GroupLanguage = components['schemas']['UpdateGroupRequest']['language']
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<MeResponse | null>(null)
@@ -59,6 +60,17 @@ export const useAuthStore = defineStore('auth', () => {
   const login = (input: LoginInput) =>
     submit(async () => unwrap(await api.POST('/auth/login', { body: input })))
 
+  /** Changes the group's email language (owner only). Returns whether it was saved. */
+  async function updateGroupLanguage(language: GroupLanguage): Promise<boolean> {
+    try {
+      const group = unwrap(await api.PATCH('/group', { body: { language } }))
+      if (user.value) user.value = { ...user.value, group }
+      return true
+    } catch {
+      return false
+    }
+  }
+
   /** Exchanges the refresh cookie for a new access token. Returns it, or null if there is no session. */
   async function refresh(): Promise<string | null> {
     try {
@@ -97,5 +109,5 @@ export const useAuthStore = defineStore('auth', () => {
     onSessionExpired: clear,
   })
 
-  return { user, accessToken, status, loading, error, isAuthenticated, signUp, login, logout, restore, refresh }
+  return { user, accessToken, status, loading, error, isAuthenticated, signUp, login, logout, restore, refresh, updateGroupLanguage }
 })

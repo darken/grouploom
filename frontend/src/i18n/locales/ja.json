@@ -459,5 +459,10 @@
       "update": "回答を更新",
       "hint": "イベントが始まるまで回答を変更できます。"
     }
+  },
+  "account": {
+    "emailLanguage": "メールの言語",
+    "emailLanguageHelp": "メンバーへのメールはこの言語で送信されます。",
+    "languageFailed": "言語を保存できませんでした。もう一度お試しください。"
   }
 }

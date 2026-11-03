@@ -6,6 +6,9 @@ import ja from './locales/ja.json'
 export const SUPPORTED_LOCALES = ['en', 'ja'] as const
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 
+/** Each language in its own script, so people can find theirs whatever the page language is. */
+export const LANGUAGE_NAMES: Record<Locale, string> = { en: 'English', ja: '日本語' }
+
 export type MessageSchema = typeof en
 
 const isSupported = (tag: string): tag is Locale => (SUPPORTED_LOCALES as readonly string[]).includes(tag)

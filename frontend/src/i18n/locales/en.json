@@ -459,5 +459,10 @@
       "update": "Update reply",
       "hint": "You can change your answer until the event starts."
     }
+  },
+  "account": {
+    "emailLanguage": "Email language",
+    "emailLanguageHelp": "Emails to members are sent in this language.",
+    "languageFailed": "Couldn't save the language. Try again."
   }
 }

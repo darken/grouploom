@@ -48,10 +48,28 @@ describe('SignupView', () => {
     await flushPromises()
 
     expect(post).toHaveBeenLastCalledWith('/auth/signup', {
-      body: { groupName: 'Chess Club', displayName: 'Ada', email: 'ada@example.com', password: 'correct horse battery' },
+      body: {
+        groupName: 'Chess Club',
+        displayName: 'Ada',
+        email: 'ada@example.com',
+        password: 'correct horse battery',
+        language: 'en',
+      },
     })
     // Lazy-loaded route components resolve asynchronously.
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'))
+  })
+
+  it('creates a Japanese group when the page is in Japanese', async () => {
+    applyLocale('ja')
+    const { wrapper } = await mountSignup()
+    post.mockResolvedValueOnce({ data: me, response: new Response() })
+
+    await fill(wrapper)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(post).toHaveBeenLastCalledWith('/auth/signup', { body: expect.objectContaining({ language: 'ja' }) })
   })
 
   it('shows the duplicate email message on 409', async () => {

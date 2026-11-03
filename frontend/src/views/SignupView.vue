@@ -8,6 +8,7 @@ import ErrorBanner from '@/components/ErrorBanner.vue'
 import PasswordField from '@/components/PasswordField.vue'
 import TextField from '@/components/TextField.vue'
 import { fieldErrorsFrom, isFormLevel } from '@/composables/useFieldErrors'
+import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -45,6 +46,8 @@ async function submit() {
     displayName: form.displayName,
     email: form.email,
     password: form.password,
+    // A group created from a Japanese browser starts in Japanese.
+    language: i18n.global.locale.value,
   })
   if (ok) await router.push('/')
 }

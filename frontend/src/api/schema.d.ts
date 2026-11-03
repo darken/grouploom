@@ -372,6 +372,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the group's settings (owner only) */
+        patch: operations["update_4"];
+        trace?: never;
+    };
     "/system/info": {
         parameters: {
             query?: never;
@@ -885,6 +902,8 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+            /** @enum {string} */
+            language?: "en" | "ja";
         };
         AuthResponse: {
             accessToken: string;
@@ -899,6 +918,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            /** @enum {string} */
+            language: "en" | "ja";
         };
         MeResponse: {
             /** Format: uuid */
@@ -912,6 +933,10 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+        };
+        UpdateGroupRequest: {
+            /** @enum {string} */
+            language: "en" | "ja";
         };
         SystemInfoResponse: {
             name: string;
@@ -2372,6 +2397,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    update_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupSummary"];
                 };
             };
             /** @description Error */
