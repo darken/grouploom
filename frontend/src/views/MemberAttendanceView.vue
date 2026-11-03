@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -10,6 +11,7 @@ import ResponseChoice from '@/components/ResponseChoice.vue'
 import TextAreaField from '@/components/TextAreaField.vue'
 import { useMemberAttendanceStore } from '@/stores/memberAttendance'
 
+const { t } = useI18n()
 const route = useRoute()
 const store = useMemberAttendanceStore()
 
@@ -37,9 +39,9 @@ const data = computed(() => store.data)
 const closed = computed(() => data.value !== null && !data.value.open)
 const cancelled = computed(() => data.value?.event.cancelled === true)
 const answeredBefore = computed(() => Boolean(data.value?.response))
-const sendLabel = computed(() => (answeredBefore.value ? 'Update reply' : 'Send reply'))
+const sendLabel = computed(() => (answeredBefore.value ? t('memberPages.attendance.update') : t('memberPages.attendance.send')))
 
-const ANSWER_TEXT = { GOING: 'Going', NOT_GOING: "Can't go" } as const
+const answerText = (answer: 'GOING' | 'NOT_GOING') => t(answer === 'GOING' ? 'attendance.going' : 'attendance.notGoing')
 
 async function showNote() {
   noteOpen.value = true
@@ -68,37 +70,37 @@ function changeAnswer() {
 
     <div v-else-if="store.status === 'error' && store.error" class="mt-6">
       <ErrorBanner :error="store.error">
-        <BaseButton variant="secondary" @click="store.load()">Retry</BaseButton>
+        <BaseButton variant="secondary" @click="store.load()">{{ t('common.retry') }}</BaseButton>
       </ErrorBanner>
     </div>
 
     <template v-else-if="data">
-      <h1 class="text-[28px] leading-tight font-semibold tracking-tight">Hi {{ data.memberName }}</h1>
+      <h1 class="text-[28px] leading-tight font-semibold tracking-tight">{{ t('memberPages.attendance.hi', { name: data.memberName }) }}</h1>
 
       <p v-if="closed" data-closed class="mt-4 rounded-xl bg-[var(--app-fill)] px-4 py-3 text-[15px]">
         <template v-if="cancelled">
-          <span class="font-medium">This event was cancelled.</span>
+          <span class="font-medium">{{ t('memberPages.attendance.cancelled') }}</span>
           <span v-if="data.event.cancellationMessage" class="mt-1 block whitespace-pre-line text-[var(--app-muted)]">{{ data.event.cancellationMessage }}</span>
         </template>
-        <span v-else class="font-medium">This event has started. Replies are closed.</span>
+        <span v-else class="font-medium">{{ t('memberPages.attendance.started') }}</span>
       </p>
 
       <EventSummaryCard data-event-card class="mt-4" :event="data.event" />
 
       <p v-if="closed && data.response" data-current-answer class="mt-4 text-[17px]">
-        Your reply: {{ ANSWER_TEXT[data.response] }}
+        {{ t('memberPages.attendance.yourReply', { answer: answerText(data.response) }) }}
       </p>
 
       <section v-else-if="!closed && store.saved" class="mt-8">
         <p role="status" class="text-[19px] leading-snug font-medium">
-          <template v-if="data.response === 'GOING'">Thanks, {{ data.memberName }}. You're going.</template>
-          <template v-else>Thanks for letting us know.</template>
+          <template v-if="data.response === 'GOING'">{{ t('memberPages.attendance.thanksGoing', { name: data.memberName }) }}</template>
+          <template v-else>{{ t('memberPages.attendance.thanks') }}</template>
         </p>
-        <BaseButton class="mt-4" variant="secondary" @click="changeAnswer">Change answer</BaseButton>
+        <BaseButton class="mt-4" variant="secondary" @click="changeAnswer">{{ t('memberPages.attendance.change') }}</BaseButton>
       </section>
 
       <form v-else-if="!closed" class="mt-8" @submit.prevent="store.submit()">
-        <h2 class="mb-3 text-xl font-semibold tracking-tight">Will you come?</h2>
+        <h2 class="mb-3 text-xl font-semibold tracking-tight">{{ t('memberPages.attendance.willYouCome') }}</h2>
         <ResponseChoice v-model="store.choice" />
 
         <div class="mt-5">
@@ -106,7 +108,7 @@ function changeAnswer() {
             v-if="noteOpen"
             ref="noteField"
             v-model="store.note"
-            label="Add a note for the organizer (optional)"
+            :label="t('memberPages.attendance.note')"
             name="note"
             :maxlength="280"
           />
@@ -116,16 +118,16 @@ function changeAnswer() {
             class="min-h-11 rounded-lg text-[15px] text-[var(--app-accent)] hover:underline"
             @click="showNote"
           >
-            + Add a note
+            {{ t('memberPages.attendance.addNote') }}
           </button>
         </div>
 
         <p v-if="store.error" role="alert" class="mt-4 text-[15px] text-[var(--app-danger)]">
-          Couldn't send your reply. Try again.
+          {{ t('memberPages.attendance.sendFailed') }}
         </p>
 
         <BaseButton class="mt-6" type="submit" block :loading="store.saving" :disabled="!store.choice">{{ sendLabel }}</BaseButton>
-        <p class="mt-3 text-center text-[13px] text-[var(--app-muted)]">You can change your answer until the event starts.</p>
+        <p class="mt-3 text-center text-[13px] text-[var(--app-muted)]">{{ t('memberPages.attendance.hint') }}</p>
       </form>
     </template>
   </div>

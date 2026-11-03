@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useMemberAttendanceStore } from '@/stores/memberAttendance'
 import { useMemberPreferencesStore } from '@/stores/memberPreferences'
+
+const { t } = useI18n()
 
 // Members arrive from an email: no app header, navigation or sign-up hints, just the group they know.
 const preferences = useMemberPreferencesStore()
@@ -19,7 +22,7 @@ const groupName = computed(() => preferences.data?.groupName ?? attendance.data?
       <slot />
     </main>
     <footer class="mt-12 text-center text-[13px] text-[var(--app-muted)]">
-      <template v-if="groupName">Sent by {{ groupName }} via GroupLoom</template>
+      <template v-if="groupName">{{ t('memberPages.footer', { group: groupName }) }}</template>
       <template v-else>GroupLoom</template>
     </footer>
   </div>

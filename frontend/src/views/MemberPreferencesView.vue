@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -10,6 +11,7 @@ import SaveStatus from '@/components/SaveStatus.vue'
 import ToggleSwitch from '@/components/ToggleSwitch.vue'
 import { useMemberPreferencesStore } from '@/stores/memberPreferences'
 
+const { t } = useI18n()
 const route = useRoute()
 const store = useMemberPreferencesStore()
 
@@ -37,7 +39,7 @@ const group = 'divide-y divide-[var(--app-line)]/60 overflow-hidden rounded-2xl 
 
 <template>
   <div>
-    <h1 class="text-[28px] leading-tight font-semibold tracking-tight">Email preferences</h1>
+    <h1 class="text-[28px] leading-tight font-semibold tracking-tight">{{ t('memberPages.preferences.title') }}</h1>
 
     <div v-if="store.status === 'loading'" aria-busy="true" class="mt-6">
       <div data-skeleton class="h-5 w-3/4 animate-pulse rounded bg-[var(--app-fill)]" />
@@ -53,19 +55,19 @@ const group = 'divide-y divide-[var(--app-line)]/60 overflow-hidden rounded-2xl 
 
     <div v-else-if="store.status === 'error' && store.error" class="mt-6">
       <ErrorBanner :error="store.error">
-        <BaseButton variant="secondary" @click="store.load()">Retry</BaseButton>
+        <BaseButton variant="secondary" @click="store.load()">{{ t('common.retry') }}</BaseButton>
       </ErrorBanner>
     </div>
 
     <template v-else-if="data">
       <p class="mt-3 text-[17px] leading-snug">
-        Hi {{ data.memberName }} — choose which {{ data.groupName }} events you'd like to hear about.
+        {{ t('memberPages.preferences.greeting', { name: data.memberName, group: data.groupName }) }}
       </p>
-      <p class="mt-1 text-[15px] text-[var(--app-muted)]">Sending to {{ data.maskedEmail }}</p>
+      <p class="mt-1 text-[15px] text-[var(--app-muted)]">{{ t('memberPages.preferences.sendingTo', { email: data.maskedEmail }) }}</p>
 
       <section class="mt-8" aria-labelledby="types-heading">
         <div class="mb-2 flex min-h-5 items-baseline justify-between px-4">
-          <h2 id="types-heading" :class="sectionHeader">Event types</h2>
+          <h2 id="types-heading" :class="sectionHeader">{{ t('memberPages.preferences.eventTypes') }}</h2>
           <SaveStatus :status="store.saveStatus" @retry="store.retry()" />
         </div>
         <ul v-if="data.eventTypes.length" :class="group">
@@ -81,18 +83,18 @@ const group = 'divide-y divide-[var(--app-line)]/60 overflow-hidden rounded-2xl 
           />
         </ul>
         <p v-else class="rounded-2xl border border-dashed border-[var(--app-line)] px-4 py-6 text-center text-[15px] text-[var(--app-muted)]">
-          {{ data.groupName }} hasn't set up any event types yet.
+          {{ t('memberPages.preferences.noTypes', { group: data.groupName }) }}
         </p>
         <p v-if="paused" class="mt-2 px-4 text-[13px] text-[var(--app-muted)]">
-          Invitations are paused. Your choices below are kept.
+          {{ t('memberPages.preferences.paused') }}
         </p>
       </section>
 
       <section class="mt-8" aria-labelledby="all-heading">
-        <h2 id="all-heading" class="mb-2 px-4" :class="sectionHeader">All invitations</h2>
+        <h2 id="all-heading" class="mb-2 px-4" :class="sectionHeader">{{ t('memberPages.preferences.allInvitations') }}</h2>
         <ul :class="group">
           <li class="flex min-h-[3.25rem] items-center gap-3 py-1 pr-2 pl-4">
-            <span id="pause-label" class="min-w-0 flex-1 py-2 text-[17px] leading-snug">Pause all invitations</span>
+            <span id="pause-label" class="min-w-0 flex-1 py-2 text-[17px] leading-snug">{{ t('memberPages.preferences.pauseAll') }}</span>
             <ToggleSwitch
               :model-value="paused"
               aria-labelledby="pause-label"
@@ -102,7 +104,7 @@ const group = 'divide-y divide-[var(--app-line)]/60 overflow-hidden rounded-2xl 
           </li>
         </ul>
         <p id="pause-help" class="mt-2 px-4 text-[13px] text-[var(--app-muted)]">
-          You won't get invitations from {{ data.groupName }} until you turn this off.
+          {{ t('memberPages.preferences.pauseHelp', { group: data.groupName }) }}
         </p>
       </section>
     </template>

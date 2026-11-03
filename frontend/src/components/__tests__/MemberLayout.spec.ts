@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { applyLocale } from '@/i18n'
 import { useMemberAttendanceStore } from '@/stores/memberAttendance'
 import { useMemberPreferencesStore } from '@/stores/memberPreferences'
 import MemberLayout from '../MemberLayout.vue'
@@ -65,5 +66,18 @@ describe('MemberLayout', () => {
 
     expect(wrapper.find('[data-wordmark]').exists()).toBe(false)
     expect(wrapper.get('footer').text()).toBe('GroupLoom')
+  })
+
+  it('words the footer in Japanese', () => {
+    applyLocale('ja')
+    useMemberPreferencesStore().data = {
+      memberName: 'Ana',
+      maskedEmail: 'a••@example.com',
+      groupName: 'Chess Club',
+      invitationsPaused: false,
+      eventTypes: [],
+    }
+
+    expect(mountLayout().get('footer').text()).toBe('Chess ClubよりGroupLoom経由で送信')
   })
 })

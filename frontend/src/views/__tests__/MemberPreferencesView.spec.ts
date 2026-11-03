@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { api } from '@/api/client'
+import { applyLocale } from '@/i18n'
 import MemberPreferencesView from '../MemberPreferencesView.vue'
 
 vi.mock('@/api/client', () => ({
@@ -233,5 +234,27 @@ describe('MemberPreferencesView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Hi Ana')
+  })
+})
+
+describe('MemberPreferencesView in Japanese', () => {
+  beforeEach(() => {
+    get.mockReset()
+    put.mockReset()
+    sessionStorage.clear()
+    document.body.innerHTML = ''
+  })
+
+  it('greets the member and explains the choices in Japanese', async () => {
+    applyLocale('ja')
+    get.mockResolvedValue(ok(prefs({ invitationsPaused: true })))
+
+    const wrapper = await mountView()
+
+    expect(wrapper.get('h1').text()).toBe('メール設定')
+    expect(wrapper.text()).toContain('Anaさん、Chess Clubのイベントのうち、お知らせを受け取りたいものを選んでください。')
+    expect(wrapper.text()).toContain('送信先: a••@example.com')
+    expect(wrapper.text()).toContain('すべての招待を一時停止')
+    expect(wrapper.text()).toContain('招待は一時停止中です。')
   })
 })

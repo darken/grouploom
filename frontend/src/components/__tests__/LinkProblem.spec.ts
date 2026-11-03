@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
+import { applyLocale } from '@/i18n'
 import LinkProblem from '../LinkProblem.vue'
 
 describe('LinkProblem', () => {
@@ -16,5 +17,14 @@ describe('LinkProblem', () => {
 
     expect(wrapper.text()).toContain('This link has expired.')
     expect(wrapper.text()).toContain('Ask your organizer for a new one.')
+  })
+})
+
+describe('LinkProblem in Japanese', () => {
+  it('explains an expired link', () => {
+    applyLocale('ja')
+    const wrapper = mount(LinkProblem, { props: { kind: 'expired' } })
+
+    expect(wrapper.text()).toBe('このリンクの有効期限が切れました。主催者に新しいリンクをお願いしてください。')
   })
 })

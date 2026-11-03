@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { api } from '@/api/client'
+import { applyLocale } from '@/i18n'
 import MemberAttendanceView from '../MemberAttendanceView.vue'
 
 vi.mock('@/api/client', () => ({
@@ -314,5 +315,26 @@ describe('MemberAttendanceView', () => {
     expect(get).toHaveBeenLastCalledWith('/public/attendance', { params: { header: { 'X-Member-Token': 'second' } } })
     expect(wrapper.get('h1').text()).toBe('Hi Bob')
     expect(radios(wrapper)[1]!.attributes('aria-checked')).toBe('true')
+  })
+})
+
+describe('MemberAttendanceView in Japanese', () => {
+  beforeEach(() => {
+    get.mockReset()
+    put.mockReset()
+    sessionStorage.clear()
+    document.body.innerHTML = ''
+  })
+
+  it('greets the member and asks the question in Japanese', async () => {
+    applyLocale('ja')
+    get.mockResolvedValue(ok(reply()))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.get('h1').text()).toBe('Anaさん、こんにちは')
+    expect(wrapper.get('form h2').text()).toBe('参加しますか？')
+    expect(radios(wrapper).map((r) => r.text())).toEqual(['参加', '不参加'])
+    expect(button(wrapper, '回答を送信')).toBeDefined()
   })
 })

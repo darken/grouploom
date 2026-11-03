@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import type { AttendanceChoice } from '@/stores/memberAttendance'
 
+const { t } = useI18n()
 const model = defineModel<AttendanceChoice | null>({ required: true })
 
-const CHOICES: { value: AttendanceChoice; label: string }[] = [
-  { value: 'GOING', label: 'Going' },
-  { value: 'NOT_GOING', label: "Can't go" },
+const CHOICES: { value: AttendanceChoice; label: () => string }[] = [
+  { value: 'GOING', label: () => t('attendance.going') },
+  { value: 'NOT_GOING', label: () => t('attendance.notGoing') },
 ]
 
 const buttons = ref<HTMLButtonElement[]>([])
@@ -41,7 +43,7 @@ function cardClass(value: AttendanceChoice) {
 </script>
 
 <template>
-  <div role="radiogroup" aria-label="Will you come?" class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+  <div role="radiogroup" :aria-label="t('memberPages.attendance.willYouCome')" class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
     <button
       v-for="(choice, i) in CHOICES"
       :key="choice.value"
@@ -60,7 +62,7 @@ function cardClass(value: AttendanceChoice) {
       <svg v-else class="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="m6.5 6.5 11 11m0-11-11 11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
       </svg>
-      {{ choice.label }}
+      {{ choice.label() }}
     </button>
   </div>
 </template>

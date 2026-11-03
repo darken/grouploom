@@ -423,5 +423,39 @@
       "done": "Done",
       "copy": "Copy"
     }
+  },
+  "memberPages": {
+    "footer": "Sent by {group} via GroupLoom",
+    "link": {
+      "invalid": "This link isn't valid. Use the latest link from your email, or ask your organizer for a new one.",
+      "expired": "This link has expired. Ask your organizer for a new one."
+    },
+    "preferences": {
+      "title": "Email preferences",
+      "greeting": "Hi {name} — choose which {group} events you'd like to hear about.",
+      "sendingTo": "Sending to {email}",
+      "eventTypes": "Event types",
+      "noTypes": "{group} hasn't set up any event types yet.",
+      "paused": "Invitations are paused. Your choices below are kept.",
+      "allInvitations": "All invitations",
+      "pauseAll": "Pause all invitations",
+      "pauseHelp": "You won't get invitations from {group} until you turn this off."
+    },
+    "attendance": {
+      "hi": "Hi {name}",
+      "cancelled": "This event was cancelled.",
+      "started": "This event has started. Replies are closed.",
+      "yourReply": "Your reply: {answer}",
+      "thanksGoing": "Thanks, {name}. You're going.",
+      "thanks": "Thanks for letting us know.",
+      "change": "Change answer",
+      "willYouCome": "Will you come?",
+      "note": "Add a note for the organizer (optional)",
+      "addNote": "+ Add a note",
+      "sendFailed": "Couldn't send your reply. Try again.",
+      "send": "Send reply",
+      "update": "Update reply",
+      "hint": "You can change your answer until the event starts."
+    }
   }
 }
