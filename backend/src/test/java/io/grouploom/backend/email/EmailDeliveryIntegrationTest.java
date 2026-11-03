@@ -65,9 +65,13 @@ class EmailDeliveryIntegrationTest {
 	}
 
 	private Organizer signUp(String groupName) throws Exception {
+		return signUp(groupName, "en");
+	}
+
+	private Organizer signUp(String groupName, String language) throws Exception {
 		String email = "owner-" + System.nanoTime() + "@example.com";
 		String body = "{\"groupName\":\"" + groupName + "\",\"displayName\":\"Olga\",\"email\":\"" + email
-				+ "\",\"password\":\"correct horse battery\"}";
+				+ "\",\"password\":\"correct horse battery\",\"language\":\"" + language + "\"}";
 		String json = mockMvc.perform(post("/api/auth/signup").servletPath("/api").contentType(MediaType.APPLICATION_JSON).content(body))
 			.andReturn().getResponse().getContentAsString();
 		return new Organizer(JsonPath.read(json, "$.accessToken"), email);
@@ -139,6 +143,45 @@ class EmailDeliveryIntegrationTest {
 		mockMvc.perform(as(post("/api/members/" + memberId + "/preferences-email"), organizer))
 			.andExpect(status().isTooManyRequests())
 			.andExpect(jsonPath("$.code").value("email.cooldown"));
+	}
+
+	@Test
+	void preferencesEmail_forAJapaneseGroup_arrivesInJapaneseWithAnEncodedSubject() throws Exception {
+		String groupName = "チェスクラブ " + System.nanoTime();
+		Organizer organizer = signUp(groupName, "ja");
+		String memberEmail = "ana-" + System.nanoTime() + "@example.com";
+		String memberId = createMember(organizer, "あな", memberEmail);
+
+		mockMvc.perform(as(post("/api/members/" + memberId + "/preferences-email"), organizer)).andExpect(status().isAccepted());
+		dispatcher.dispatchBatch();
+
+		List<String> ids = messagesTo(memberEmail);
+		assertThat(ids).hasSize(1);
+		String message = mailpit("/api/v1/message/" + ids.get(0));
+		assertThat((String) JsonPath.read(message, "$.Subject")).isEqualTo(groupName + "から届くイベントを選んでください");
+		assertThat((String) JsonPath.read(message, "$.From.Name")).isEqualTo(groupName + "(GroupLoom経由)");
+		String text = JsonPath.read(message, "$.Text");
+		String html = JsonPath.read(message, "$.HTML");
+		assertThat(text).contains("あなさん、").contains("このリンクは").contains("日間有効です。");
+		assertThat(html).contains("lang=\"ja\"").contains("受け取る内容を設定する");
+		assertThat(LINK.matcher(text).find()).isTrue();
+	}
+
+	@Test
+	void preferencesEmail_queuedBeforeALanguageChange_isSentInTheNewLanguage() throws Exception {
+		String groupName = "Chess Club " + System.nanoTime();
+		Organizer organizer = signUp(groupName);
+		String memberEmail = "ana-" + System.nanoTime() + "@example.com";
+		String memberId = createMember(organizer, "Ana", memberEmail);
+		mockMvc.perform(as(post("/api/members/" + memberId + "/preferences-email"), organizer)).andExpect(status().isAccepted());
+
+		mockMvc.perform(as(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/group"), organizer)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"language\":\"ja\"}"))
+			.andExpect(status().isOk());
+		dispatcher.dispatchBatch();
+
+		String message = mailpit("/api/v1/message/" + messagesTo(memberEmail).get(0));
+		assertThat((String) JsonPath.read(message, "$.Subject")).isEqualTo(groupName + "から届くイベントを選んでください");
 	}
 
 	@Test
