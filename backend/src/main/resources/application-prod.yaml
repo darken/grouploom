@@ -1,0 +1,26 @@
+# Production profile (Render). Secrets come from environment variables:
+# SPRING_DATASOURCE_URL/USERNAME/PASSWORD, SPRING_MAIL_USERNAME/PASSWORD
+# and GROUPLOOM_JWT_SECRET.
+grouploom:
+  public-base-url: ${GROUPLOOM_PUBLIC_BASE_URL}
+  mail:
+    from: ${GROUPLOOM_MAIL_FROM}
+server:
+  # Render injects PORT.
+  port: ${PORT:8080}
+spring:
+  datasource:
+    hikari:
+      # Neon's free tier allows few connections.
+      maximum-pool-size: 5
+  mail:
+    # Brevo SMTP relay. Port 2525 because Render's free tier blocks 25, 465 and 587.
+    host: smtp-relay.brevo.com
+    port: 2525
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
