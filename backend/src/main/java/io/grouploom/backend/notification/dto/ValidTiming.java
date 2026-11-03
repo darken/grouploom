@@ -23,7 +23,7 @@ import jakarta.validation.Payload;
 @Retention(RUNTIME)
 public @interface ValidTiming {
 
-	String message() default "does not match the timing";
+	String message() default "{validation.timing.invalid}";
 
 	Class<?>[] groups() default {};
 
@@ -39,7 +39,7 @@ public @interface ValidTiming {
 			context.disableDefaultConstraintViolation();
 			boolean valid = true;
 			if (r.kind() == NotificationKind.CANCELLATION) {
-				valid = violation(context, "kind", "must be INVITATION or REMINDER");
+				valid = violation(context, "kind", "{validation.timing.kind}");
 			}
 			if (r.timing() == null) {
 				return valid;
@@ -47,26 +47,26 @@ public @interface ValidTiming {
 			switch (r.timing()) {
 				case NOW -> {
 					if (r.offsetMinutes() != null) {
-						valid = violation(context, "offsetMinutes", "isn't allowed when sending now");
+						valid = violation(context, "offsetMinutes", "{validation.timing.not-allowed-now}");
 					}
 					if (r.localSendAt() != null) {
-						valid = violation(context, "localSendAt", "isn't allowed when sending now");
+						valid = violation(context, "localSendAt", "{validation.timing.not-allowed-now}");
 					}
 				}
 				case BEFORE_START -> {
 					if (r.offsetMinutes() == null) {
-						valid = violation(context, "offsetMinutes", "is required for BEFORE_START");
+						valid = violation(context, "offsetMinutes", "{validation.timing.required-before-start}");
 					}
 					if (r.localSendAt() != null) {
-						valid = violation(context, "localSendAt", "isn't allowed for BEFORE_START");
+						valid = violation(context, "localSendAt", "{validation.timing.not-allowed-before-start}");
 					}
 				}
 				case AT -> {
 					if (r.localSendAt() == null) {
-						valid = violation(context, "localSendAt", "is required for AT");
+						valid = violation(context, "localSendAt", "{validation.timing.required-at}");
 					}
 					if (r.offsetMinutes() != null) {
-						valid = violation(context, "offsetMinutes", "isn't allowed for AT");
+						valid = violation(context, "offsetMinutes", "{validation.timing.not-allowed-at}");
 					}
 				}
 			}

@@ -64,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	// Safety net: sort parameters are whitelisted in controllers, but never leak a 500 for a bad one.
 	@ExceptionHandler(PropertyReferenceException.class)
 	ProblemDetail handleInvalidSort(PropertyReferenceException ex) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid sort property.");
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message("error.invalid-sort"));
 	}
 
 	@ExceptionHandler({ InvalidCredentialsException.class, InvalidRefreshTokenException.class,
@@ -96,7 +96,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		List<FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
 			.map(e -> new FieldError(e.getField(), e.getDefaultMessage()))
 			.toList();
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message("error.validation-failed"));
 		problem.setProperty("errors", errors);
 		return handleExceptionInternal(ex, problem, headers, status, request);
 	}
@@ -108,8 +108,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		if (ex.getCause() instanceof DatabindException cause && !cause.getPath().isEmpty()) {
 			String field = cause.getPath().getLast().getPropertyName();
 			if (field != null) {
-				ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
-				problem.setProperty("errors", List.of(new FieldError(field, "Invalid value.")));
+				ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message("error.validation-failed"));
+				problem.setProperty("errors", List.of(new FieldError(field, message("error.invalid-value"))));
 				return handleExceptionInternal(ex, problem, headers, status, request);
 			}
 		}
@@ -124,7 +124,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			.flatMap(result -> result.getResolvableErrors().stream()
 				.map(e -> new FieldError(result.getMethodParameter().getParameterName(), e.getDefaultMessage())))
 			.toList();
-		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message("error.validation-failed"));
 		problem.setProperty("errors", errors);
 		return handleExceptionInternal(ex, problem, headers, status, request);
 	}

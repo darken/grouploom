@@ -22,7 +22,7 @@ import jakarta.validation.Payload;
 @Retention(RUNTIME)
 public @interface ValidTimeZone {
 
-	String message() default "must be a valid time zone, e.g. Europe/Madrid";
+	String message() default "{validation.time-zone.invalid}";
 
 	Class<?>[] groups() default {};
 

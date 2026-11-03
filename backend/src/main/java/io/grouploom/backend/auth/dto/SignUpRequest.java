@@ -10,7 +10,7 @@ public record SignUpRequest(
 		@NotBlank @Size(max = 120) String groupName,
 		@NotBlank @Size(max = 120) String displayName,
 		@NotBlank @Email @Size(max = 254) String email,
-		@NotNull @Size(min = 12, max = 128) String password,
+		@NotNull @Size(min = 12, max = 128, message = "{validation.password.size}") String password,
 		/** The group's language; English when omitted. */
 		Language language) {
 }

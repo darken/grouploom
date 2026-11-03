@@ -19,7 +19,7 @@ import jakarta.validation.Payload;
 @Retention(RUNTIME)
 public @interface ValidTimeRange {
 
-	String message() default "must be after the start";
+	String message() default "{validation.time-range.end-after-start}";
 
 	Class<?>[] groups() default {};
 
