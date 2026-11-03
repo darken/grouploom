@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { EVENT_TYPE_COLORS } from '@/ui/eventTypeColors'
 
+const { t } = useI18n()
 const model = defineModel<string>({ required: true })
 
 const swatches = ref<HTMLButtonElement[]>([])
@@ -27,14 +29,14 @@ function onKeydown(event: KeyboardEvent, index: number) {
 </script>
 
 <template>
-  <div role="radiogroup" aria-label="Color" class="flex flex-wrap gap-2">
+  <div role="radiogroup" :aria-label="t('eventTypes.color')" class="flex flex-wrap gap-2">
     <button
       v-for="(color, index) in EVENT_TYPE_COLORS"
       :key="color.key"
       :ref="(el) => (swatches[index] = el as HTMLButtonElement)"
       type="button"
       role="radio"
-      :aria-label="color.label"
+      :aria-label="t(`eventTypes.colors.${color.key}`)"
       :aria-checked="model === color.key"
       :tabindex="model === color.key ? 0 : -1"
       class="grid size-8 place-items-center rounded-full text-white transition-shadow duration-150 ease-out"

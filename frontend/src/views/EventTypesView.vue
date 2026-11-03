@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -14,6 +15,7 @@ import SegmentedControl from '@/components/SegmentedControl.vue'
 import { useToast } from '@/composables/useToast'
 import { useEventTypesStore, type EventType, type EventTypeDraft } from '@/stores/eventTypes'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = useEventTypesStore()
@@ -68,7 +70,7 @@ async function save(payload: EventTypeDraft) {
     : await store.create(payload)
   if (!ok) return
   closeForm()
-  toast.show(current ? 'Saved' : 'Event type created')
+  toast.show(current ? t('common.saveStatus.saved') : t('eventTypes.toast.created'))
   await syncPage()
 }
 
@@ -88,14 +90,16 @@ async function setArchived(item: EventType, archived: boolean) {
     version: item.version,
   })
   if (!ok) {
-    toast.show(store.stale ? 'Changed by someone else. Reloading…' : `Couldn't ${archived ? 'archive' : 'unarchive'}.`)
+    toast.show(
+      store.stale ? t('eventTypes.toast.staleReloading') : t(archived ? 'eventTypes.toast.archiveFailed' : 'eventTypes.toast.unarchiveFailed'),
+    )
     if (store.stale) await retry()
     return
   }
   const saved = store.lastSaved
   toast.show(
-    archived ? 'Archived' : 'Unarchived',
-    archived && saved ? { label: 'Undo', run: () => void setArchived(saved, false) } : undefined,
+    archived ? t('eventTypes.toast.archived') : t('eventTypes.toast.unarchived'),
+    archived && saved ? { label: t('eventTypes.toast.undo'), run: () => void setArchived(saved, false) } : undefined,
   )
 }
 
@@ -107,7 +111,7 @@ async function confirmDelete() {
   deleting.value = null
   if (!target) return
   if (await store.remove(target.id)) {
-    toast.show('Deleted')
+    toast.show(t('common.deleted'))
     await syncPage()
   } else if (store.error?.problem.code === 'event-type.in-use') {
     // Events use this type, so offer the alternative instead of an error banner.
@@ -135,34 +139,34 @@ async function syncPage() {
   <section>
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div class="flex items-baseline gap-3">
-        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">Event types</h1>
-        <span v-if="store.pageInfo" class="text-2xl text-[var(--app-muted)]" aria-label="Total">{{ store.pageInfo.totalElements }}</span>
+        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">{{ t('eventTypes.title') }}</h1>
+        <span v-if="store.pageInfo" class="text-2xl text-[var(--app-muted)]" :aria-label="t('eventTypes.total')">{{ store.pageInfo.totalElements }}</span>
       </div>
       <BaseButton @click="openForm(null)">
         <svg class="size-4 sm:hidden" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
-        <span class="max-sm:sr-only">New event type</span>
+        <span class="max-sm:sr-only">{{ t('eventTypes.new') }}</span>
       </BaseButton>
     </div>
 
     <div class="mt-8">
       <SegmentedControl
         v-model="segment"
-        label="Show"
+        :label="t('events.filter.show')"
         :options="[
-          { value: 'active', label: 'Active' },
-          { value: 'archived', label: 'Archived' },
+          { value: 'active', label: t('eventTypes.filter.active') },
+          { value: 'archived', label: t('eventTypes.filter.archived') },
         ]"
       />
     </div>
 
     <div class="mt-6 space-y-4">
       <ErrorBanner v-if="store.error" :error="store.error">
-        <BaseButton variant="plain" @click="retry">Retry</BaseButton>
+        <BaseButton variant="plain" @click="retry">{{ t('common.retry') }}</BaseButton>
       </ErrorBanner>
 
-      <div v-if="store.loading && store.loaded" role="progressbar" aria-label="Loading" class="h-0.5 overflow-hidden rounded-full bg-[var(--app-fill)]">
+      <div v-if="store.loading && store.loaded" role="progressbar" :aria-label="t('common.loading')" class="h-0.5 overflow-hidden rounded-full bg-[var(--app-fill)]">
         <div class="h-full w-1/3 animate-pulse rounded-full bg-[var(--app-accent)]" />
       </div>
 
@@ -181,12 +185,12 @@ async function syncPage() {
         />
         <EmptyState
           v-else-if="!archivedFilter"
-          title="No event types yet"
-          description="Event types let you group similar events, like practices or meetings."
+          :title="t('eventTypes.empty.title')"
+          :description="t('eventTypes.empty.description')"
         >
-          <BaseButton @click="openForm(null)">Create event type</BaseButton>
+          <BaseButton @click="openForm(null)">{{ t('eventTypes.empty.create') }}</BaseButton>
         </EmptyState>
-        <EmptyState v-else title="No archived event types." />
+        <EmptyState v-else :title="t('eventTypes.empty.archived')" />
 
         <PaginationBar
           v-if="store.pageInfo"
@@ -198,15 +202,15 @@ async function syncPage() {
       </template>
     </div>
 
-    <BaseDialog :open="formOpen" :title="editing ? 'Edit event type' : 'New event type'" @close="closeForm">
+    <BaseDialog :open="formOpen" :title="editing ? t('eventTypes.editTitle') : t('eventTypes.new')" @close="closeForm">
       <div
         v-if="store.stale"
         role="alert"
         class="mb-5 rounded-xl border border-[var(--app-danger)]/30 p-4 text-[15px]"
       >
-        <p class="font-medium">Changed by someone else</p>
-        <p class="text-[var(--app-muted)]">This event type was updated while you were editing it.</p>
-        <BaseButton class="mt-3" variant="secondary" @click="reloadAfterStale">Reload</BaseButton>
+        <p class="font-medium">{{ t('eventTypes.stale.title') }}</p>
+        <p class="text-[var(--app-muted)]">{{ t('eventTypes.stale.body') }}</p>
+        <BaseButton class="mt-3" variant="secondary" @click="reloadAfterStale">{{ t('common.reload') }}</BaseButton>
       </div>
       <EventTypeForm
         :key="editing?.id ?? 'new'"
@@ -220,9 +224,9 @@ async function syncPage() {
 
     <ConfirmDialog
       :open="deleting !== null"
-      :title="`Delete '${deleting?.name ?? ''}'?`"
-      message="This can't be undone."
-      confirm-label="Delete"
+      :title="t('eventTypes.delete.title', { name: deleting?.name ?? '' })"
+      :message="t('common.cantUndo')"
+      :confirm-label="t('common.delete')"
       destructive
       @confirm="confirmDelete"
       @cancel="deleting = null"
@@ -230,9 +234,9 @@ async function syncPage() {
 
     <ConfirmDialog
       :open="archiveInstead !== null"
-      :title="`Can't delete '${archiveInstead?.name ?? ''}'`"
-      message="This event type is used by events. Archive it instead?"
-      confirm-label="Archive"
+      :title="t('eventTypes.delete.inUseTitle', { name: archiveInstead?.name ?? '' })"
+      :message="t('eventTypes.delete.inUseMessage')"
+      :confirm-label="t('eventTypes.archive')"
       @confirm="confirmArchiveInstead"
       @cancel="archiveInstead = null"
     />

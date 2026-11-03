@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import type { EventType } from '@/stores/eventTypes'
 import { formatDuration } from '@/ui/formatDuration'
 import { eventTypeColor } from '@/ui/eventTypeColors'
+
+const { t } = useI18n()
 
 defineProps<{ items: EventType[] }>()
 
@@ -89,7 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
           type="button"
           aria-haspopup="menu"
           :aria-expanded="openId === item.id"
-          :aria-label="`Actions for ${item.name}`"
+          :aria-label="t('eventTypes.actionsFor', { name: item.name })"
           class="grid size-9 place-items-center rounded-full text-[var(--app-muted)] transition-opacity duration-150 hover:bg-[var(--app-fill)] focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0 [@media(hover:none)]:opacity-100"
           @click="toggle(item, $event)"
         >
@@ -103,16 +106,16 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown)
           class="absolute right-3 z-10 mt-1 w-44 rounded-xl border border-[var(--app-line)]/60 bg-[var(--app-surface)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.1)]"
           @keydown="onMenuKeydown"
         >
-          <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] hover:bg-[var(--app-fill)]" @click="choose('edit', item)">Edit</button>
+          <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] hover:bg-[var(--app-fill)]" @click="choose('edit', item)">{{ t('common.edit') }}</button>
           <button
             role="menuitem"
             type="button"
             class="block w-full rounded-lg px-3 py-2 text-left text-[15px] hover:bg-[var(--app-fill)]"
             @click="choose(item.archived ? 'unarchive' : 'archive', item)"
           >
-            {{ item.archived ? 'Unarchive' : 'Archive' }}
+            {{ item.archived ? t('eventTypes.unarchive') : t('eventTypes.archive') }}
           </button>
-          <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="choose('delete', item)">Delete</button>
+          <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="choose('delete', item)">{{ t('common.delete') }}</button>
         </div>
       </div>
     </li>

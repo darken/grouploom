@@ -7,6 +7,7 @@ import { api } from '@/api/client'
 import ToastHost from '@/components/ToastHost.vue'
 import { useToast } from '@/composables/useToast'
 import { installDialogPolyfill } from '@/components/__tests__/dialogPolyfill'
+import { applyLocale } from '@/i18n'
 import EventTypesView from '../EventTypesView.vue'
 
 vi.mock('@/api/client', () => ({
@@ -324,5 +325,35 @@ describe('EventTypesView', () => {
     await flushPromises()
 
     expect(wrapper.find('[role=alert]').exists()).toBe(true)
+  })
+})
+
+describe('EventTypesView in Japanese', () => {
+  beforeEach(() => {
+    for (const m of [get, post, put, del]) m.mockReset()
+    document.body.innerHTML = ''
+  })
+
+  it('shows the title, filter and empty state in Japanese', async () => {
+    applyLocale('ja')
+    get.mockResolvedValue(pageOf([]))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find('h1').text()).toBe('イベントの種類')
+    expect(wrapper.text()).toContain('有効')
+    expect(wrapper.text()).toContain('イベントの種類はまだありません')
+  })
+
+  it('names the color swatches in Japanese', async () => {
+    applyLocale('ja')
+    get.mockResolvedValue(pageOf([]))
+    const { wrapper } = await mountView()
+
+    await wrapper.findAll('button').find((b) => b.text() === '種類を作成')!.trigger('click')
+    await flushPromises()
+
+    const dialog = wrapper.findAll('dialog').find((d) => d.attributes('open') !== undefined)!
+    expect(dialog.get('[role=radio]').attributes('aria-label')).toBe('青')
   })
 })

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import type { EventType, EventTypeDraft } from '@/stores/eventTypes'
 import BaseButton from './BaseButton.vue'
@@ -7,6 +8,8 @@ import ColorSwatchPicker from './ColorSwatchPicker.vue'
 import DurationSelect from './DurationSelect.vue'
 import TextAreaField from './TextAreaField.vue'
 import TextField from './TextField.vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{ eventType?: EventType; saving?: boolean; fieldErrors?: Record<string, string> }>()
 
@@ -27,11 +30,11 @@ const clientErrors = computed(() => {
   const name = form.name.trim()
   const minutes = form.defaultDurationMinutes
   return {
-    name: !name ? 'Enter a name.' : name.length > 80 ? 'Use 80 characters or fewer.' : '',
-    description: form.description.trim().length > 500 ? 'Use 500 characters or fewer.' : '',
+    name: !name ? t('eventTypes.form.enterName') : name.length > 80 ? t('common.maxChars', { n: 80 }) : '',
+    description: form.description.trim().length > 500 ? t('common.maxChars', { n: 500 }) : '',
     defaultDurationMinutes:
       minutes !== undefined && (!Number.isInteger(minutes) || minutes < 5 || minutes > 1440)
-        ? 'Enter 5 to 1440 minutes.'
+        ? t('eventTypes.form.durationRange')
         : '',
   }
 })
@@ -77,7 +80,7 @@ function onKeydown(event: KeyboardEvent) {
   <form class="space-y-5" novalidate @submit.prevent="submit" @keydown="onKeydown">
     <TextField
       v-model="form.name"
-      label="Name"
+      :label="t('eventTypes.form.name')"
       name="name"
       autocomplete="off"
       :error="errorFor('name')"
@@ -86,7 +89,7 @@ function onKeydown(event: KeyboardEvent) {
     />
     <TextAreaField
       v-model="form.description"
-      label="Description"
+      :label="t('eventTypes.form.description')"
       name="description"
       :maxlength="500"
       :error="errorFor('description')"
@@ -94,13 +97,13 @@ function onKeydown(event: KeyboardEvent) {
       @blur="touched.description = true"
     />
     <div>
-      <p class="mb-1.5 text-sm font-medium">Color</p>
+      <p class="mb-1.5 text-sm font-medium">{{ t('eventTypes.color') }}</p>
       <ColorSwatchPicker v-model="form.color" />
     </div>
     <DurationSelect v-model="form.defaultDurationMinutes" :error="errorFor('defaultDurationMinutes')" />
     <div class="flex justify-end gap-2 pt-2">
-      <BaseButton variant="plain" @click="emit('cancel')">Cancel</BaseButton>
-      <BaseButton type="submit" :loading="saving" :disabled="!canSave">Save</BaseButton>
+      <BaseButton variant="plain" @click="emit('cancel')">{{ t('common.cancel') }}</BaseButton>
+      <BaseButton type="submit" :loading="saving" :disabled="!canSave">{{ t('common.save') }}</BaseButton>
     </div>
   </form>
 </template>

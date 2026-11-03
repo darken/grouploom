@@ -76,7 +76,11 @@
       "saved": "Saved",
       "failed": "Couldn't save.",
       "retry": "Try again."
-    }
+    },
+    "deleted": "Deleted",
+    "reload": "Reload",
+    "cantUndo": "This can't be undone.",
+    "edit": "Edit"
   },
   "nav": {
     "label": "Primary",
@@ -298,6 +302,60 @@
       "paused": "{left} has paused invitations or turned off {type}. | {left} have paused invitations or turned off {type}.",
       "skipsNotGoing": "Members who said they can't go are skipped.",
       "separator": " "
+    }
+  },
+  "eventTypes": {
+    "title": "Event types",
+    "total": "Total",
+    "new": "New event type",
+    "editTitle": "Edit event type",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "color": "Color",
+    "actionsFor": "Actions for {name}",
+    "filter": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "empty": {
+      "title": "No event types yet",
+      "description": "Event types let you group similar events, like practices or meetings.",
+      "create": "Create event type",
+      "archived": "No archived event types."
+    },
+    "toast": {
+      "created": "Event type created",
+      "staleReloading": "Changed by someone else. Reloading…",
+      "archiveFailed": "Couldn't archive.",
+      "unarchiveFailed": "Couldn't unarchive.",
+      "archived": "Archived",
+      "unarchived": "Unarchived",
+      "undo": "Undo"
+    },
+    "stale": {
+      "title": "Changed by someone else",
+      "body": "This event type was updated while you were editing it."
+    },
+    "delete": {
+      "title": "Delete '{name}'?",
+      "inUseTitle": "Can't delete '{name}'",
+      "inUseMessage": "This event type is used by events. Archive it instead?"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "enterName": "Enter a name.",
+      "durationRange": "Enter 5 to 1440 minutes."
+    },
+    "colors": {
+      "blue": "Blue",
+      "green": "Green",
+      "orange": "Orange",
+      "red": "Red",
+      "purple": "Purple",
+      "pink": "Pink",
+      "teal": "Teal",
+      "gray": "Gray"
     }
   }
 }

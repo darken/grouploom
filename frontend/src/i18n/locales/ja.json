@@ -76,7 +76,11 @@
       "saved": "保存しました",
       "failed": "保存できませんでした。",
       "retry": "再試行"
-    }
+    },
+    "deleted": "削除しました",
+    "reload": "再読み込み",
+    "cantUndo": "この操作は元に戻せません。",
+    "edit": "編集"
   },
   "nav": {
     "label": "メインメニュー",
@@ -298,6 +302,60 @@
       "paused": "{left}人が招待を一時停止しているか、「{type}」の通知をオフにしています。",
       "skipsNotGoing": "参加しないと回答したメンバーには送信されません。",
       "separator": ""
+    }
+  },
+  "eventTypes": {
+    "title": "イベントの種類",
+    "total": "合計",
+    "new": "種類を追加",
+    "editTitle": "イベントの種類を編集",
+    "archive": "アーカイブ",
+    "unarchive": "アーカイブを解除",
+    "color": "色",
+    "actionsFor": "「{name}」の操作",
+    "filter": {
+      "active": "有効",
+      "archived": "アーカイブ済み"
+    },
+    "empty": {
+      "title": "イベントの種類はまだありません",
+      "description": "イベントの種類を使うと、練習や会議などの似たイベントをまとめられます。",
+      "create": "種類を作成",
+      "archived": "アーカイブ済みの種類はありません。"
+    },
+    "toast": {
+      "created": "イベントの種類を作成しました",
+      "staleReloading": "他のユーザーが変更しました。再読み込みします…",
+      "archiveFailed": "アーカイブできませんでした。",
+      "unarchiveFailed": "アーカイブを解除できませんでした。",
+      "archived": "アーカイブしました",
+      "unarchived": "アーカイブを解除しました",
+      "undo": "元に戻す"
+    },
+    "stale": {
+      "title": "他のユーザーが変更しました",
+      "body": "編集中にこのイベントの種類が更新されました。"
+    },
+    "delete": {
+      "title": "「{name}」を削除しますか？",
+      "inUseTitle": "「{name}」は削除できません",
+      "inUseMessage": "この種類はイベントで使われています。代わりにアーカイブしますか？"
+    },
+    "form": {
+      "name": "名前",
+      "description": "説明",
+      "enterName": "名前を入力してください。",
+      "durationRange": "5〜1440分で入力してください。"
+    },
+    "colors": {
+      "blue": "青",
+      "green": "緑",
+      "orange": "オレンジ",
+      "red": "赤",
+      "purple": "紫",
+      "pink": "ピンク",
+      "teal": "ティール",
+      "gray": "グレー"
     }
   }
 }
