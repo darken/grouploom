@@ -64,7 +64,14 @@
       "label": "Search members",
       "clear": "Clear search"
     },
-    "save": {
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close",
+    "loading": "Loading",
+    "minutesUnit": "min",
+    "maxChars": "Use {n} characters or fewer.",
+    "archivedName": "{name} (archived)",
+    "saveStatus": {
       "saving": "Saving…",
       "saved": "Saved",
       "failed": "Couldn't save.",
@@ -140,6 +147,157 @@
       "enterName": "Enter your name.",
       "passwordTooShort": "Use at least 12 characters.",
       "emailTaken": "An account with this email already exists."
+    }
+  },
+  "events": {
+    "title": "Events",
+    "new": "New event",
+    "created": "Event created",
+    "filter": {
+      "show": "Show",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "type": "Event type",
+      "allTypes": "All types"
+    },
+    "empty": {
+      "ofType": "No events of this type.",
+      "showAll": "Show all types",
+      "upcomingTitle": "Nothing scheduled.",
+      "upcomingDescription": "Plan your group's next practice, meeting or outing.",
+      "past": "No past events yet."
+    },
+    "form": {
+      "title": "Title",
+      "type": "Type",
+      "location": "Location",
+      "description": "Description",
+      "starts": "Starts",
+      "ends": "Ends",
+      "startDate": "Start date",
+      "startTime": "Start time",
+      "endDate": "End date",
+      "endTime": "End time",
+      "enterTitle": "Enter a title.",
+      "chooseType": "Choose an event type.",
+      "enterStart": "Enter a start date and time.",
+      "startPast": "The start can't be in the past.",
+      "enterEnd": "Enter an end date and time.",
+      "endAfterStart": "End must be after the start.",
+      "maxSevenDays": "An event can last at most 7 days.",
+      "createTypeFirst": "Create an event type first",
+      "chooseTypePlaceholder": "Choose a type",
+      "timeZone": "Time zone",
+      "timeZoneCurrent": "Time zone: {zone} · {change}",
+      "timeZoneChange": "Change"
+    },
+    "duration": {
+      "default": "Default duration",
+      "none": "None",
+      "custom": "Custom…",
+      "customAria": "Custom duration in minutes"
+    },
+    "cancelled": "Cancelled",
+    "inProgress": "Now",
+    "goingCount": "{n} going",
+    "cancel": {
+      "title": "Cancel '{title}'?",
+      "notified": "Members who were notified will get a cancellation email.",
+      "notNotified": "No one has been notified yet.",
+      "message": "Add a message",
+      "keep": "Keep event",
+      "confirm": "Cancel event"
+    },
+    "detail": {
+      "notFound": "This event doesn't exist or was deleted.",
+      "backToEvents": "Back to events",
+      "edit": "Edit",
+      "editTitle": "Edit event",
+      "moreActions": "More actions",
+      "cancelMenu": "Cancel event…",
+      "cancelledBanner": "Cancelled · {date}",
+      "staleTitle": "Changed by someone else",
+      "staleBody": "This event was updated while you were editing it.",
+      "reload": "Reload",
+      "cantDeleteTitle": "Can't delete '{title}'",
+      "cantDeleteMessage": "Members were notified about this event, so it can't be deleted.",
+      "ok": "OK",
+      "deleteTitle": "Delete '{title}'?",
+      "deleteNotifiedMessage": "Members were notified about this event. Cancel it instead?",
+      "deleteMessage": "This can't be undone.",
+      "notifications": "Notifications",
+      "schedule": "Schedule…",
+      "noNotifications": "No notifications yet.",
+      "inviteByEmail": "Invite members to this event by email.",
+      "scheduleInvitation": "Schedule invitation"
+    },
+    "toast": {
+      "saved": "Saved",
+      "deleted": "Deleted",
+      "cancelled": "Event cancelled",
+      "answerFailed": "Couldn't update the answer. Try again.",
+      "unscheduled": "Unscheduled",
+      "alreadySent": "That notification was already sent.",
+      "noOne": "No one to notify",
+      "sent": {
+        "INVITATION": "Invitation sent to {n} member | Invitation sent to {n} members",
+        "REMINDER": "Reminder sent to {n} member | Reminder sent to {n} members"
+      },
+      "sending": {
+        "INVITATION": "Sending invitation…",
+        "REMINDER": "Sending reminder…"
+      },
+      "scheduled": {
+        "INVITATION": "Invitation scheduled for {when}",
+        "REMINDER": "Reminder scheduled for {when}"
+      }
+    },
+    "error": {
+      "alreadyCancelled": "This event is already cancelled.",
+      "alreadyEnded": "This event has already ended.",
+      "cancelFailed": "Could not cancel the event. Try again.",
+      "scheduleLimit": "This event already has 10 scheduled notifications. Unschedule one first.",
+      "scheduleCancelled": "This event was cancelled.",
+      "scheduleStarted": "This event has already started.",
+      "scheduleFailed": "Could not schedule the notification. Try again."
+    }
+  },
+  "attendance": {
+    "going": "Going",
+    "notGoing": "Can't go",
+    "noReply": "No reply",
+    "markGoing": "Mark as going",
+    "markNotGoing": "Mark as can't go",
+    "clear": "Clear answer",
+    "byOrganizer": "by organizer",
+    "actionsFor": "Actions for {name}",
+    "title": "Attendance",
+    "filterLabel": "Filter by answer",
+    "all": "All",
+    "addMembers": "Add members to track who's coming.",
+    "goToMembers": "Go to members",
+    "nobody": "No one here yet."
+  },
+  "notify": {
+    "title": "Notify members",
+    "typeLabel": "Notification type",
+    "when": "When",
+    "tooLate": "Too late",
+    "custom": "Custom…",
+    "sendAt": "Send at",
+    "chooseDateTime": "Choose a date and time.",
+    "timesIn": "Times are in {zone}.",
+    "note": "Add a note (optional)",
+    "sendNow": "Send now",
+    "schedule": "Schedule",
+    "unschedule": "Unschedule",
+    "actionsFor": "Actions for {kind}",
+    "audience": {
+      "none": "No members will receive this right now.",
+      "sentTo": "Will be sent to {eligible} of {total} member. | Will be sent to {eligible} of {total} members.",
+      "paused": "{left} has paused invitations or turned off {type}. | {left} have paused invitations or turned off {type}.",
+      "skipsNotGoing": "Members who said they can't go are skipped.",
+      "separator": " "
     }
   }
 }

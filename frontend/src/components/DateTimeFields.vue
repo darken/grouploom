@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { fromWallClockMs, wallClockMs, type DateTimeParts } from '@/ui/localDateTime'
 
@@ -17,6 +18,7 @@ const props = defineProps<{
   startLabel?: string
 }>()
 
+const { t } = useI18n()
 const endTouched = ref(props.endEdited ?? false)
 
 const INPUT =
@@ -60,12 +62,12 @@ watch(
 <template>
   <div class="space-y-4">
     <div>
-      <p class="mb-1.5 text-sm font-medium">{{ startLabel ?? 'Starts' }}</p>
+      <p class="mb-1.5 text-sm font-medium">{{ startLabel ?? t('events.form.starts') }}</p>
       <div class="flex gap-2">
         <input
           type="date"
           name="startDate"
-          aria-label="Start date"
+          :aria-label="t('events.form.startDate')"
           :class="INPUT"
           :value="model.startDate"
           :disabled="disabled"
@@ -76,7 +78,7 @@ watch(
           type="time"
           step="300"
           name="startTime"
-          aria-label="Start time"
+          :aria-label="t('events.form.startTime')"
           :class="INPUT"
           :value="model.startTime"
           :disabled="disabled"
@@ -87,12 +89,12 @@ watch(
       <p v-if="startError" class="mt-1.5 text-sm text-[var(--app-danger)]">{{ startError }}</p>
     </div>
     <div v-if="!single">
-      <p class="mb-1.5 text-sm font-medium">Ends</p>
+      <p class="mb-1.5 text-sm font-medium">{{ t('events.form.ends') }}</p>
       <div class="flex gap-2">
         <input
           type="date"
           name="endDate"
-          aria-label="End date"
+          :aria-label="t('events.form.endDate')"
           :class="INPUT"
           :value="model.endDate"
           :disabled="disabled"
@@ -103,7 +105,7 @@ watch(
           type="time"
           step="300"
           name="endTime"
-          aria-label="End time"
+          :aria-label="t('events.form.endTime')"
           :class="INPUT"
           :value="model.endTime"
           :disabled="disabled"

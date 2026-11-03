@@ -37,13 +37,13 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <span aria-live="polite" class="text-[13px] text-[var(--app-muted)]">
-    <template v-if="status === 'saving'">{{ t('common.save.saving') }}</template>
+    <template v-if="status === 'saving'">{{ t('common.saveStatus.saving') }}</template>
     <Transition name="fade">
-      <span v-if="status === 'saved' && savedVisible">{{ t('common.save.saved') }}</span>
+      <span v-if="status === 'saved' && savedVisible">{{ t('common.saveStatus.saved') }}</span>
     </Transition>
     <template v-if="status === 'error'">
-      {{ t('common.save.failed') }}
-      <button type="button" class="rounded font-medium text-[var(--app-accent)] underline-offset-2 hover:underline" @click="emit('retry')">{{ t('common.save.retry') }}</button>
+      {{ t('common.saveStatus.failed') }}
+      <button type="button" class="rounded font-medium text-[var(--app-accent)] underline-offset-2 hover:underline" @click="emit('retry')">{{ t('common.saveStatus.retry') }}</button>
     </template>
   </span>
 </template>

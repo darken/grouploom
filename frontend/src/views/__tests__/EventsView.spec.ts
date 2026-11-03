@@ -7,6 +7,7 @@ import { api } from '@/api/client'
 import ToastHost from '@/components/ToastHost.vue'
 import { useToast } from '@/composables/useToast'
 import { installDialogPolyfill } from '@/components/__tests__/dialogPolyfill'
+import { applyLocale } from '@/i18n'
 import { useEventsStore } from '@/stores/events'
 import EventsView from '../EventsView.vue'
 
@@ -323,5 +324,33 @@ describe('EventsView', () => {
     await flushPromises()
 
     expect(wrapper.findAll('li a')).toHaveLength(1)
+  })
+})
+
+describe('EventsView in Japanese', () => {
+  beforeEach(() => {
+    for (const m of [get, post]) m.mockReset()
+    document.body.innerHTML = ''
+  })
+
+  it('shows the title, filters and day labels in Japanese', async () => {
+    applyLocale('ja')
+    serve(() => pageOf([event('1')]))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find('h1').text()).toBe('イベント')
+    expect(wrapper.text()).toContain('今後')
+    expect(wrapper.text()).toContain('すべての種類')
+    expect(wrapper.text()).toContain('11月2日(月)')
+  })
+
+  it('shows the empty state in Japanese', async () => {
+    applyLocale('ja')
+    serve(() => pageOf([]))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.text()).toContain('予定はありません。')
   })
 })

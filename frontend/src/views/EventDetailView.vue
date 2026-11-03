@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AttendanceList from '@/components/AttendanceList.vue'
@@ -25,6 +26,7 @@ import { formatEventTime } from '@/ui/formatEventTime'
 import { describeSendTime, formatMonthDay } from '@/ui/notificationText'
 import { browserTimeZone } from '@/ui/timeZones'
 
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = useEventsStore()
@@ -42,12 +44,12 @@ const notFound = computed(() => store.currentError?.status === 404)
 
 // --- attendance ---
 const FILTER_QUERY = { going: 'GOING', 'not-going': 'NOT_GOING', 'no-reply': 'NO_REPLY' } as const
-const FILTER_OPTIONS = [
-  { value: 'ALL', label: 'All' },
-  { value: 'GOING', label: 'Going' },
-  { value: 'NOT_GOING', label: "Can't go" },
-  { value: 'NO_REPLY', label: 'No reply' },
-]
+const filterOptions = computed(() => [
+  { value: 'ALL', label: t('attendance.all') },
+  { value: 'GOING', label: t('attendance.going') },
+  { value: 'NOT_GOING', label: t('attendance.notGoing') },
+  { value: 'NO_REPLY', label: t('attendance.noReply') },
+])
 
 /** The filter lives in the URL (`?attendance=going`), so a reload or a shared link shows the same list. */
 const attendanceFilter = computed<AttendanceFilter>({
@@ -69,7 +71,7 @@ const attendancePending = computed(() => attendance.summary === null && attendan
 
 async function changeAnswer(action: () => Promise<void>) {
   await action()
-  if (attendance.error) toast.show("Couldn't update the answer. Try again.")
+  if (attendance.error) toast.show(t('events.toast.answerFailed'))
 }
 
 const setAnswer = (memberId: string, response: AttendanceAnswer) => changeAnswer(() => attendance.set(memberId, response))
@@ -87,12 +89,10 @@ watch(
   { immediate: true },
 )
 
-watch(
-  () => event.value?.title,
-  (title) => {
-    if (title) document.title = `${title} · GroupLoom`
-  },
-)
+// The router sets a generic page title; the event's own title replaces it (and again after a language change).
+watch([() => event.value?.title, locale], ([title]) => {
+  if (title) document.title = `${title} · GroupLoom`
+})
 
 onMounted(() => void eventTypes.fetchActiveOptions().catch(() => undefined))
 
@@ -111,7 +111,7 @@ async function save(payload: EventDraft) {
   if (!current) return
   if (!(await store.update(current.id, { ...payload, version: payload.version ?? current.version }))) return
   formOpen.value = false
-  toast.show('Saved')
+  toast.show(t('events.toast.saved'))
 }
 
 async function reloadAfterStale() {
@@ -146,7 +146,7 @@ async function confirmDelete() {
   if (!current) return
   const result = await store.remove(current.id)
   if (result === 'ok') {
-    toast.show('Deleted')
+    toast.show(t('events.toast.deleted'))
     await router.push({ path: '/events', query: listQuery.value })
   } else if (result === 'has-notifications') {
     deleteBlocked.value = true
@@ -177,14 +177,14 @@ async function submitCancel(message: string) {
   const result = await store.cancel(current.id, message)
   if (result.status === 'ok') {
     cancelling.value = false
-    toast.show('Event cancelled')
+    toast.show(t('events.toast.cancelled'))
     void notifications.fetch(current.id)
   } else if (result.status === 'cancelled') {
-    cancelError.value = 'This event is already cancelled.'
+    cancelError.value = t('events.error.alreadyCancelled')
   } else if (result.status === 'ended') {
-    cancelError.value = 'This event has already ended.'
+    cancelError.value = t('events.error.alreadyEnded')
   } else {
-    cancelError.value = store.saveError?.message ?? 'Could not cancel the event. Try again.'
+    cancelError.value = store.saveError?.message ?? t('events.error.cancelFailed')
   }
 }
 
@@ -206,33 +206,35 @@ const loadAudience = (kind: AudienceKind) => {
 }
 
 const SCHEDULE_MESSAGES = {
-  limit: 'This event already has 10 scheduled notifications. Unschedule one first.',
-  cancelled: 'This event was cancelled.',
-  started: 'This event has already started.',
-  error: 'Could not schedule the notification. Try again.',
+  limit: 'events.error.scheduleLimit',
+  cancelled: 'events.error.scheduleCancelled',
+  started: 'events.error.scheduleStarted',
+  error: 'events.error.scheduleFailed',
 } as const
 
 async function submitSchedule(input: ScheduleNotificationInput) {
-  const word = input.kind === 'INVITATION' ? 'Invitation' : 'Reminder'
+  const kind = input.kind === 'INVITATION' ? 'INVITATION' : 'REMINDER'
   const result = await notifications.schedule(input, (delivered) => {
     const count = delivered?.recipientCount
     if (count === undefined) return
-    toast.show(count === 0 ? 'No one to notify' : `${word} sent to ${count} ${count === 1 ? 'member' : 'members'}`)
+    toast.show(count === 0 ? t('events.toast.noOne') : t(`events.toast.sent.${kind}`, count))
   })
   if (result.status === 'ok') {
     scheduling.value = false
     toast.show(
-      input.timing === 'NOW' ? `Sending ${word.toLowerCase()}…` : `${word} scheduled for ${describeSendTime(result.notification)}`,
+      input.timing === 'NOW'
+        ? t(`events.toast.sending.${kind}`)
+        : t(`events.toast.scheduled.${kind}`, { when: describeSendTime(result.notification) }),
     )
   } else if (result.status !== 'invalid') {
-    scheduleError.value = SCHEDULE_MESSAGES[result.status]
+    scheduleError.value = t(SCHEDULE_MESSAGES[result.status])
   }
 }
 
 async function unschedule(notificationId: string) {
   const result = await notifications.unschedule(notificationId)
-  if (result.status === 'ok') toast.show('Unscheduled')
-  else if (result.status === 'already-sent') toast.show('That notification was already sent.')
+  if (result.status === 'ok') toast.show(t('events.toast.unscheduled'))
+  else if (result.status === 'already-sent') toast.show(t('events.toast.alreadySent'))
 }
 </script>
 
@@ -246,7 +248,7 @@ async function unschedule(notificationId: string) {
       <svg class="size-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <path d="m12 4-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
-      Events
+      {{ t('events.title') }}
     </RouterLink>
 
     <div v-if="store.currentLoading && !event" data-skeleton class="mt-6 space-y-4" aria-busy="true">
@@ -258,31 +260,31 @@ async function unschedule(notificationId: string) {
     <EmptyState
       v-else-if="notFound"
       class="mt-8"
-      title="This event doesn't exist or was deleted."
+:title="t('events.detail.notFound')"
     >
       <RouterLink
         :to="{ path: '/events', query: listQuery }"
         class="inline-flex min-h-11 items-center rounded-full bg-[var(--app-accent)] px-5 py-2 text-[15px] font-medium text-white hover:bg-[var(--app-accent-hover)]"
       >
-        Back to events
+        {{ t('events.detail.backToEvents') }}
       </RouterLink>
     </EmptyState>
 
     <ErrorBanner v-else-if="store.currentError && !event" class="mt-6" :error="store.currentError">
-      <BaseButton variant="plain" @click="retry">Retry</BaseButton>
+      <BaseButton variant="plain" @click="retry">{{ t('common.retry') }}</BaseButton>
     </ErrorBanner>
 
     <article v-else-if="event" class="mt-4">
       <div class="flex items-start justify-between gap-4">
         <h1 class="min-w-0 text-4xl font-semibold tracking-tight break-words sm:text-5xl" :class="cancelled && 'line-through decoration-2'">{{ event.title }}</h1>
         <div class="flex shrink-0 items-center gap-2 pt-1">
-          <BaseButton v-if="!cancelled" variant="secondary" @click="openForm">Edit</BaseButton>
+          <BaseButton v-if="!cancelled" variant="secondary" @click="openForm">{{ t('events.detail.edit') }}</BaseButton>
           <div ref="menu" class="relative">
             <button
               type="button"
               aria-haspopup="menu"
               :aria-expanded="menuOpen"
-              aria-label="More actions"
+              :aria-label="t('events.detail.moreActions')"
               class="grid size-11 place-items-center rounded-full text-[var(--app-muted)] hover:bg-[var(--app-fill)]"
               @click="menuOpen = !menuOpen"
             >
@@ -296,15 +298,15 @@ async function unschedule(notificationId: string) {
               class="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-[var(--app-line)]/60 bg-[var(--app-surface)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.1)]"
               @keydown.esc="menuOpen = false"
             >
-              <button v-if="canCancel" role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="openCancel">Cancel event…</button>
-              <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="askDelete">Delete</button>
+              <button v-if="canCancel" role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="openCancel">{{ t('events.detail.cancelMenu') }}</button>
+              <button role="menuitem" type="button" class="block w-full rounded-lg px-3 py-2 text-left text-[15px] text-[var(--app-danger)] hover:bg-[var(--app-fill)]" @click="askDelete">{{ t('common.delete') }}</button>
             </div>
           </div>
         </div>
       </div>
 
       <p v-if="event.cancelledAt" data-cancelled-banner class="mt-3 rounded-xl bg-[var(--app-fill)] px-4 py-3 text-[15px]">
-        <span class="font-medium text-[var(--app-danger)]">Cancelled · {{ formatMonthDay(event.cancelledAt, event.timeZone) }}</span>
+        <span class="font-medium text-[var(--app-danger)]">{{ t('events.detail.cancelledBanner', { date: formatMonthDay(event.cancelledAt, event.timeZone) }) }}</span>
         <span v-if="event.cancellationMessage" class="mt-1 block whitespace-pre-line text-[var(--app-muted)]">{{ event.cancellationMessage }}</span>
       </p>
 
@@ -313,7 +315,7 @@ async function unschedule(notificationId: string) {
         class="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--app-fill)] px-3 py-1 text-sm font-medium"
       >
         <span data-color-dot class="size-2.5 rounded-full" :class="eventTypeColor(event.eventType.color).dot" aria-hidden="true" />
-        {{ event.eventType.name }}<template v-if="event.eventType.archived"> (archived)</template>
+        {{ event.eventType.archived ? t('common.archivedName', { name: event.eventType.name }) : event.eventType.name }}
       </p>
 
       <p data-time class="mt-4 text-xl text-[var(--app-muted)] tabular-nums sm:text-2xl">
@@ -332,7 +334,7 @@ async function unschedule(notificationId: string) {
 
       <section data-attendance class="mt-10" aria-labelledby="attendance-heading">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4">
-          <h2 id="attendance-heading" class="text-xl font-semibold tracking-tight">Attendance</h2>
+          <h2 id="attendance-heading" class="text-xl font-semibold tracking-tight">{{ t('attendance.title') }}</h2>
           <AttendanceSummary
             v-if="attendance.summary"
             :summary="attendance.summary"
@@ -341,18 +343,18 @@ async function unschedule(notificationId: string) {
           />
         </div>
         <ErrorBanner v-if="attendance.error && attendancePending" :error="attendance.error">
-          <BaseButton variant="plain" @click="attendance.fetchSummary(event.id); attendance.fetchRows({ filter: attendanceFilter, page: 0 })">Retry</BaseButton>
+          <BaseButton variant="plain" @click="attendance.fetchSummary(event.id); attendance.fetchRows({ filter: attendanceFilter, page: 0 })">{{ t('common.retry') }}</BaseButton>
         </ErrorBanner>
-        <EmptyState v-else-if="attendance.summary?.members === 0" title="Add members to track who's coming.">
+        <EmptyState v-else-if="attendance.summary?.members === 0" :title="t('attendance.addMembers')">
           <RouterLink
             to="/members"
             class="inline-flex min-h-11 items-center rounded-full bg-[var(--app-accent)] px-5 py-2 text-[15px] font-medium text-white hover:bg-[var(--app-accent-hover)]"
           >
-            Go to members
+            {{ t('attendance.goToMembers') }}
           </RouterLink>
         </EmptyState>
         <template v-else-if="!attendancePending">
-          <SegmentedControl v-model="attendanceFilter" :options="FILTER_OPTIONS" label="Filter by answer" />
+          <SegmentedControl v-model="attendanceFilter" :options="filterOptions" :label="t('attendance.filterLabel')" />
           <AttendanceList
             v-if="attendance.rows.length > 0"
             class="mt-4"
@@ -365,7 +367,7 @@ async function unschedule(notificationId: string) {
             v-else-if="!attendance.loading"
             class="mt-4 rounded-2xl border border-dashed border-[var(--app-line)] px-4 py-8 text-center text-[15px] text-[var(--app-muted)]"
           >
-            No one here yet.
+            {{ t('attendance.nobody') }}
           </p>
           <PaginationBar
             v-if="attendance.pageInfo"
@@ -380,32 +382,32 @@ async function unschedule(notificationId: string) {
 
       <section data-notifications class="mt-10" aria-labelledby="notifications-heading">
         <div class="mb-3 flex items-center justify-between gap-3">
-          <h2 id="notifications-heading" class="text-xl font-semibold tracking-tight">Notifications</h2>
-          <BaseButton v-if="canSchedule" variant="secondary" @click="openSchedule">Schedule…</BaseButton>
+          <h2 id="notifications-heading" class="text-xl font-semibold tracking-tight">{{ t('events.detail.notifications') }}</h2>
+          <BaseButton v-if="canSchedule" variant="secondary" @click="openSchedule">{{ t('events.detail.schedule') }}</BaseButton>
         </div>
         <ErrorBanner v-if="notifications.error && !notifications.loaded" :error="notifications.error">
-          <BaseButton variant="plain" @click="notifications.fetch(event.id)">Retry</BaseButton>
+          <BaseButton variant="plain" @click="notifications.fetch(event.id)">{{ t('common.retry') }}</BaseButton>
         </ErrorBanner>
         <NotificationList v-else-if="notifications.items.length > 0" :items="notifications.items" @unschedule="unschedule" />
         <EmptyState
           v-else-if="notifications.loaded"
-          title="No notifications yet."
-          :description="canSchedule ? 'Invite members to this event by email.' : undefined"
+          :title="t('events.detail.noNotifications')"
+          :description="canSchedule ? t('events.detail.inviteByEmail') : undefined"
         >
-          <BaseButton v-if="canSchedule" @click="openSchedule">Schedule invitation</BaseButton>
+          <BaseButton v-if="canSchedule" @click="openSchedule">{{ t('events.detail.scheduleInvitation') }}</BaseButton>
         </EmptyState>
       </section>
     </article>
 
-    <BaseDialog :open="formOpen" title="Edit event" @close="formOpen = false">
+    <BaseDialog :open="formOpen" :title="t('events.detail.editTitle')" @close="formOpen = false">
       <div
         v-if="store.stale"
         role="alert"
         class="mb-5 rounded-xl border border-[var(--app-danger)]/30 p-4 text-[15px]"
       >
-        <p class="font-medium">Changed by someone else</p>
-        <p class="text-[var(--app-muted)]">This event was updated while you were editing it.</p>
-        <BaseButton class="mt-3" variant="secondary" @click="reloadAfterStale">Reload</BaseButton>
+        <p class="font-medium">{{ t('events.detail.staleTitle') }}</p>
+        <p class="text-[var(--app-muted)]">{{ t('events.detail.staleBody') }}</p>
+        <BaseButton class="mt-3" variant="secondary" @click="reloadAfterStale">{{ t('events.detail.reload') }}</BaseButton>
       </div>
       <EventForm
         v-if="event"
@@ -445,9 +447,9 @@ async function unschedule(notificationId: string) {
     <ConfirmDialog
       v-if="event?.cancelledAt"
       :open="deleteBlocked"
-      :title="`Can't delete '${event.title}'`"
-      message="Members were notified about this event, so it can't be deleted."
-      confirm-label="OK"
+      :title="t('events.detail.cantDeleteTitle', { title: event.title })"
+      :message="t('events.detail.cantDeleteMessage')"
+      :confirm-label="t('events.detail.ok')"
       hide-cancel
       @confirm="deleteBlocked = false"
       @cancel="deleteBlocked = false"
@@ -455,18 +457,18 @@ async function unschedule(notificationId: string) {
     <ConfirmDialog
       v-else
       :open="deleteBlocked"
-      :title="`Delete '${event?.title ?? ''}'?`"
-      message="Members were notified about this event. Cancel it instead?"
-      confirm-label="Cancel event…"
+      :title="t('events.detail.deleteTitle', { title: event?.title ?? '' })"
+      :message="t('events.detail.deleteNotifiedMessage')"
+      :confirm-label="t('events.detail.cancelMenu')"
       @confirm="openCancel"
       @cancel="deleteBlocked = false"
     />
 
     <ConfirmDialog
       :open="confirmingDelete"
-      :title="`Delete '${event?.title ?? ''}'?`"
-      message="This can't be undone."
-      confirm-label="Delete"
+      :title="t('events.detail.deleteTitle', { title: event?.title ?? '' })"
+      :message="t('events.detail.deleteMessage')"
+      :confirm-label="t('common.delete')"
       destructive
       @confirm="confirmDelete"
       @cancel="confirmingDelete = false"

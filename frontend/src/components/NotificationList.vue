@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import OverflowMenu from '@/components/OverflowMenu.vue'
 import { sortNotifications, type EventNotification } from '@/stores/eventNotifications'
 import { describeFailures, describeStatusBase, kindLabel } from '@/ui/notificationText'
+
+const { t } = useI18n()
 
 const props = defineProps<{ items: EventNotification[] }>()
 const emit = defineEmits<{ unschedule: [id: string] }>()
@@ -28,8 +31,8 @@ const sorted = computed(() => sortNotifications(props.items))
       </div>
       <OverflowMenu
         v-if="n.status === 'SCHEDULED'"
-        :label="`Actions for ${kindLabel(n.kind).toLowerCase()}`"
-        :items="[{ id: 'unschedule', label: 'Unschedule' }]"
+        :label="t('notify.actionsFor', { kind: kindLabel(n.kind).toLowerCase() })"
+        :items="[{ id: 'unschedule', label: t('notify.unschedule') }]"
         @select="emit('unschedule', n.id)"
       />
     </li>

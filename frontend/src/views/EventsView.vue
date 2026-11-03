@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -14,6 +15,7 @@ import { useToast } from '@/composables/useToast'
 import { useEventTypesStore } from '@/stores/eventTypes'
 import { useEventsStore, type EventDraft, type EventWhen } from '@/stores/events'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = useEventsStore()
@@ -75,7 +77,7 @@ async function save(payload: EventDraft) {
   const created = await store.create(payload)
   if (!created) return
   formOpen.value = false
-  toast.show('Event created')
+  toast.show(t('events.created'))
   await router.push({ path: `/events/${created.id}`, query: linkQuery.value })
 }
 </script>
@@ -84,42 +86,42 @@ async function save(payload: EventDraft) {
   <section>
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div class="flex items-baseline gap-3">
-        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">Events</h1>
+        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">{{ t('events.title') }}</h1>
       </div>
       <BaseButton @click="openForm">
         <svg class="size-4 sm:hidden" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
-        <span class="max-sm:sr-only">New event</span>
+        <span class="max-sm:sr-only">{{ t('events.new') }}</span>
       </BaseButton>
     </div>
 
     <div class="mt-8 flex flex-wrap items-center justify-between gap-3">
       <SegmentedControl
         v-model="segment"
-        label="Show"
+        :label="t('events.filter.show')"
         :options="[
-          { value: 'upcoming', label: 'Upcoming' },
-          { value: 'past', label: 'Past' },
+          { value: 'upcoming', label: t('events.filter.upcoming') },
+          { value: 'past', label: t('events.filter.past') },
         ]"
       />
       <select
         v-model="typeFilter"
-        aria-label="Event type"
+        :aria-label="t('events.filter.type')"
         class="h-10 max-w-full rounded-full border border-transparent bg-[var(--app-fill)] px-4 text-[15px] text-[var(--app-ink)] focus:border-[var(--app-accent)] focus:ring-4 focus:ring-[var(--app-accent)]/20 focus:outline-none"
       >
-        <option value="">All types</option>
+        <option value="">{{ t('events.filter.allTypes') }}</option>
         <option v-for="type in eventTypes.activeOptions" :key="type.id" :value="type.id">{{ type.name }}</option>
-        <option v-for="type in eventTypes.archivedOptions" :key="type.id" :value="type.id">{{ type.name }} (archived)</option>
+        <option v-for="type in eventTypes.archivedOptions" :key="type.id" :value="type.id">{{ t('common.archivedName', { name: type.name }) }}</option>
       </select>
     </div>
 
     <div class="mt-6 space-y-4">
       <ErrorBanner v-if="store.error" :error="store.error">
-        <BaseButton variant="plain" @click="retry">Retry</BaseButton>
+        <BaseButton variant="plain" @click="retry">{{ t('common.retry') }}</BaseButton>
       </ErrorBanner>
 
-      <div v-if="store.loading && store.loaded" role="progressbar" aria-label="Loading" class="h-0.5 overflow-hidden rounded-full bg-[var(--app-fill)]">
+      <div v-if="store.loading && store.loaded" role="progressbar" :aria-label="t('common.loading')" class="h-0.5 overflow-hidden rounded-full bg-[var(--app-fill)]">
         <div class="h-full w-1/3 animate-pulse rounded-full bg-[var(--app-accent)]" />
       </div>
 
@@ -134,17 +136,17 @@ async function save(payload: EventDraft) {
 
       <template v-else-if="store.loaded">
         <EventList v-if="store.items.length" :items="store.items" :link-query="linkQuery" />
-        <EmptyState v-else-if="typeId" title="No events of this type.">
-          <BaseButton variant="secondary" @click="typeFilter = ''">Show all types</BaseButton>
+        <EmptyState v-else-if="typeId" :title="t('events.empty.ofType')">
+          <BaseButton variant="secondary" @click="typeFilter = ''">{{ t('events.empty.showAll') }}</BaseButton>
         </EmptyState>
         <EmptyState
           v-else-if="when === 'upcoming'"
-          title="Nothing scheduled."
-          description="Plan your group's next practice, meeting or outing."
+          :title="t('events.empty.upcomingTitle')"
+          :description="t('events.empty.upcomingDescription')"
         >
-          <BaseButton @click="openForm">New event</BaseButton>
+          <BaseButton @click="openForm">{{ t('events.new') }}</BaseButton>
         </EmptyState>
-        <EmptyState v-else title="No past events yet." />
+        <EmptyState v-else :title="t('events.empty.past')" />
 
         <PaginationBar
           v-if="store.pageInfo"
@@ -156,7 +158,7 @@ async function save(payload: EventDraft) {
       </template>
     </div>
 
-    <BaseDialog :open="formOpen" title="New event" @close="formOpen = false">
+    <BaseDialog :open="formOpen" :title="t('events.new')" @close="formOpen = false">
       <EventForm
         :event-types="eventTypes.activeOptions"
         :saving="store.saving"

@@ -64,7 +64,14 @@
       "label": "メンバーを検索",
       "clear": "検索をクリア"
     },
-    "save": {
+    "save": "保存",
+    "delete": "削除",
+    "close": "閉じる",
+    "loading": "読み込み中",
+    "minutesUnit": "分",
+    "maxChars": "{n}文字以内で入力してください。",
+    "archivedName": "{name}(アーカイブ済み)",
+    "saveStatus": {
       "saving": "保存中…",
       "saved": "保存しました",
       "failed": "保存できませんでした。",
@@ -140,6 +147,157 @@
       "enterName": "お名前を入力してください。",
       "passwordTooShort": "12文字以上で入力してください。",
       "emailTaken": "このメールアドレスのアカウントは既に存在します。"
+    }
+  },
+  "events": {
+    "title": "イベント",
+    "new": "新規イベント",
+    "created": "イベントを作成しました",
+    "filter": {
+      "show": "表示",
+      "upcoming": "今後",
+      "past": "過去",
+      "type": "イベントの種類",
+      "allTypes": "すべての種類"
+    },
+    "empty": {
+      "ofType": "この種類のイベントはありません。",
+      "showAll": "すべての種類を表示",
+      "upcomingTitle": "予定はありません。",
+      "upcomingDescription": "グループの次の練習や会議、お出かけを計画しましょう。",
+      "past": "過去のイベントはまだありません。"
+    },
+    "form": {
+      "title": "タイトル",
+      "type": "種類",
+      "location": "場所",
+      "description": "説明",
+      "starts": "開始",
+      "ends": "終了",
+      "startDate": "開始日",
+      "startTime": "開始時刻",
+      "endDate": "終了日",
+      "endTime": "終了時刻",
+      "enterTitle": "タイトルを入力してください。",
+      "chooseType": "イベントの種類を選んでください。",
+      "enterStart": "開始日時を入力してください。",
+      "startPast": "開始日時は過去にできません。",
+      "enterEnd": "終了日時を入力してください。",
+      "endAfterStart": "終了は開始より後にしてください。",
+      "maxSevenDays": "イベントは最長7日間です。",
+      "createTypeFirst": "先にイベントの種類を作成してください",
+      "chooseTypePlaceholder": "種類を選択",
+      "timeZone": "タイムゾーン",
+      "timeZoneCurrent": "タイムゾーン: {zone} · {change}",
+      "timeZoneChange": "変更"
+    },
+    "duration": {
+      "default": "デフォルトの所要時間",
+      "none": "なし",
+      "custom": "カスタム…",
+      "customAria": "所要時間(分)"
+    },
+    "cancelled": "中止",
+    "inProgress": "開催中",
+    "goingCount": "参加{n}人",
+    "cancel": {
+      "title": "「{title}」を中止しますか？",
+      "notified": "通知済みのメンバーには中止のメールが届きます。",
+      "notNotified": "まだ誰にも通知していません。",
+      "message": "メッセージを追加",
+      "keep": "中止しない",
+      "confirm": "イベントを中止"
+    },
+    "detail": {
+      "notFound": "このイベントは存在しないか、削除されました。",
+      "backToEvents": "イベント一覧に戻る",
+      "edit": "編集",
+      "editTitle": "イベントを編集",
+      "moreActions": "その他の操作",
+      "cancelMenu": "イベントを中止…",
+      "cancelledBanner": "中止 · {date}",
+      "staleTitle": "他のユーザーが変更しました",
+      "staleBody": "編集中にこのイベントが更新されました。",
+      "reload": "再読み込み",
+      "cantDeleteTitle": "「{title}」は削除できません",
+      "cantDeleteMessage": "このイベントについてメンバーに通知済みのため、削除できません。",
+      "ok": "OK",
+      "deleteTitle": "「{title}」を削除しますか？",
+      "deleteNotifiedMessage": "このイベントについてメンバーに通知済みです。代わりに中止しますか？",
+      "deleteMessage": "この操作は元に戻せません。",
+      "notifications": "通知",
+      "schedule": "予約…",
+      "noNotifications": "通知はまだありません。",
+      "inviteByEmail": "メールでメンバーをイベントに招待しましょう。",
+      "scheduleInvitation": "招待を予約"
+    },
+    "toast": {
+      "saved": "保存しました",
+      "deleted": "削除しました",
+      "cancelled": "イベントを中止しました",
+      "answerFailed": "回答を更新できませんでした。もう一度お試しください。",
+      "unscheduled": "予約を取り消しました",
+      "alreadySent": "この通知は既に送信されています。",
+      "noOne": "通知する相手がいません",
+      "sent": {
+        "INVITATION": "招待を{n}人に送信しました",
+        "REMINDER": "リマインダーを{n}人に送信しました"
+      },
+      "sending": {
+        "INVITATION": "招待を送信中…",
+        "REMINDER": "リマインダーを送信中…"
+      },
+      "scheduled": {
+        "INVITATION": "招待を{when}に送信予定にしました",
+        "REMINDER": "リマインダーを{when}に送信予定にしました"
+      }
+    },
+    "error": {
+      "alreadyCancelled": "このイベントは既に中止されています。",
+      "alreadyEnded": "このイベントは既に終了しています。",
+      "cancelFailed": "イベントを中止できませんでした。もう一度お試しください。",
+      "scheduleLimit": "このイベントには既に10件の通知が予約されています。先に1件取り消してください。",
+      "scheduleCancelled": "このイベントは中止されました。",
+      "scheduleStarted": "このイベントは既に開始しています。",
+      "scheduleFailed": "通知を予約できませんでした。もう一度お試しください。"
+    }
+  },
+  "attendance": {
+    "going": "参加",
+    "notGoing": "不参加",
+    "noReply": "未回答",
+    "markGoing": "参加にする",
+    "markNotGoing": "不参加にする",
+    "clear": "回答を消去",
+    "byOrganizer": "主催者が入力",
+    "actionsFor": "{name}さんの操作",
+    "title": "出欠",
+    "filterLabel": "回答で絞り込む",
+    "all": "すべて",
+    "addMembers": "メンバーを追加すると、出欠を確認できます。",
+    "goToMembers": "メンバーへ移動",
+    "nobody": "該当するメンバーはいません。"
+  },
+  "notify": {
+    "title": "メンバーに通知",
+    "typeLabel": "通知の種類",
+    "when": "送信タイミング",
+    "tooLate": "間に合いません",
+    "custom": "カスタム…",
+    "sendAt": "送信日時",
+    "chooseDateTime": "日時を選んでください。",
+    "timesIn": "時刻は{zone}です。",
+    "note": "メモを追加(任意)",
+    "sendNow": "今すぐ送信",
+    "schedule": "予約",
+    "unschedule": "予約を取り消す",
+    "actionsFor": "{kind}の操作",
+    "audience": {
+      "none": "現在、この通知を受け取るメンバーはいません。",
+      "sentTo": "{total}人中{eligible}人に送信されます。",
+      "paused": "{left}人が招待を一時停止しているか、「{type}」の通知をオフにしています。",
+      "skipsNotGoing": "参加しないと回答したメンバーには送信されません。",
+      "separator": ""
     }
   }
 }

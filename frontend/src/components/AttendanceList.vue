@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import type { AttendanceAnswer, AttendanceRow } from '@/stores/attendance'
 import { relativeTime } from '@/ui/relativeTime'
 
 import MemberAvatar from './MemberAvatar.vue'
 import OverflowMenu, { type OverflowMenuItem } from './OverflowMenu.vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   items: AttendanceRow[]
@@ -16,16 +20,16 @@ const props = defineProps<{
 const emit = defineEmits<{ set: [memberId: string, response: AttendanceAnswer]; clear: [memberId: string] }>()
 
 const ANSWERS = {
-  GOING: { label: 'Going', class: 'font-medium text-green-700 dark:text-green-400' },
-  NOT_GOING: { label: "Can't go", class: 'font-medium text-[var(--app-muted)]' },
+  GOING: { label: () => t('attendance.going'), class: 'font-medium text-green-700 dark:text-green-400' },
+  NOT_GOING: { label: () => t('attendance.notGoing'), class: 'font-medium text-[var(--app-muted)]' },
 } as const
 
 function menuItems(row: AttendanceRow): OverflowMenuItem[] {
   const items: OverflowMenuItem[] = [
-    { id: 'GOING', label: 'Mark as going', disabled: row.response === 'GOING' },
-    { id: 'NOT_GOING', label: "Mark as can't go", disabled: row.response === 'NOT_GOING' },
+    { id: 'GOING', label: t('attendance.markGoing'), disabled: row.response === 'GOING' },
+    { id: 'NOT_GOING', label: t('attendance.markNotGoing'), disabled: row.response === 'NOT_GOING' },
   ]
-  if (row.response) items.push({ id: 'clear', label: 'Clear answer', destructive: true })
+  if (row.response) items.push({ id: 'clear', label: t('attendance.clear'), destructive: true })
   return items
 }
 
@@ -44,17 +48,17 @@ const when = (iso: string) => relativeTime(iso, props.now)
       <div class="min-w-0 flex-1">
         <p class="truncate font-medium">{{ row.member.name }}</p>
         <p class="text-sm text-[var(--app-muted)]">
-          <span data-answer :class="row.response ? ANSWERS[row.response].class : ''">{{ row.response ? ANSWERS[row.response].label : 'No reply' }}</span>
+          <span data-answer :class="row.response ? ANSWERS[row.response].class : ''">{{ row.response ? ANSWERS[row.response].label() : t('attendance.noReply') }}</span>
           <template v-if="row.note">
             <span data-note class="whitespace-pre-line"> “{{ row.note }}”</span>
           </template>
-          <template v-if="row.source === 'ORGANIZER'"> · by organizer</template>
+          <template v-if="row.source === 'ORGANIZER'"> · {{ t('attendance.byOrganizer') }}</template>
           <template v-if="row.respondedAt"> · <time :datetime="row.respondedAt">{{ when(row.respondedAt) }}</time></template>
         </p>
       </div>
       <OverflowMenu
         v-if="!readOnly"
-        :label="`Actions for ${row.member.name}`"
+        :label="t('attendance.actionsFor', { name: row.member.name })"
         :items="menuItems(row)"
         trigger-class="focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0 [@media(hover:none)]:opacity-100"
         @select="choose(row, $event)"

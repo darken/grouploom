@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
+import { applyLocale } from '@/i18n'
 import type { EventItem } from '@/stores/events'
 import { browserTimeZone } from '@/ui/timeZones'
 import ScheduleNotificationDialog from '../ScheduleNotificationDialog.vue'
@@ -281,5 +282,18 @@ describe('ScheduleNotificationDialog', () => {
 
       expect(wrapper.find('[data-audience]').text()).toBe('No members will receive this right now.')
     })
+  })
+})
+
+describe('ScheduleNotificationDialog in Japanese', () => {
+  it('translates the title, timing choices and audience summary', () => {
+    applyLocale('ja')
+    const wrapper = mount(ScheduleNotificationDialog, {
+      props: { open: true, event, audience: { eligible: 3, total: 5 }, now: new Date('2026-10-01T00:00:00Z') },
+    })
+
+    expect(wrapper.find('h2').text()).toBe('メンバーに通知')
+    expect(wrapper.text()).toContain('開始1日前')
+    expect(wrapper.get('[data-audience]').text()).toContain('5人中3人に送信されます。')
   })
 })

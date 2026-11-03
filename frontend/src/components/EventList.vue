@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, type LocationQueryRaw } from 'vue-router'
 
 import type { EventItem } from '@/stores/events'
 import { eventTypeColor } from '@/ui/eventTypeColors'
 import { formatClockTime } from '@/ui/formatEventTime'
 import { groupByDay } from '@/ui/groupByDay'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   items: EventItem[]
@@ -53,17 +56,17 @@ function inProgress(event: EventItem): boolean {
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-2">
                 <span data-title class="truncate font-medium" :class="event.cancelledAt && 'text-[var(--app-muted)] line-through'">{{ event.title }}</span>
-                <span v-if="event.cancelledAt" data-cancelled class="shrink-0 text-sm text-[var(--app-danger)]">Cancelled</span>
+                <span v-if="event.cancelledAt" data-cancelled class="shrink-0 text-sm text-[var(--app-danger)]">{{ t('events.cancelled') }}</span>
                 <span
                   v-if="inProgress(event)"
                   class="shrink-0 rounded-full bg-[var(--app-accent)]/12 px-2 py-0.5 text-xs font-semibold text-[var(--app-accent)]"
                 >
-                  Now
+                  {{ t('events.inProgress') }}
                 </span>
               </span>
               <span class="block truncate text-sm text-[var(--app-muted)]">
                 {{ event.eventType.name }}<template v-if="event.location"> · {{ event.location }}</template
-                ><template v-if="event.goingCount > 0"> · <span data-going>{{ event.goingCount }} going</span></template>
+                ><template v-if="event.goingCount > 0"> · <span data-going>{{ t('events.goingCount', { n: event.goingCount }) }}</span></template>
               </span>
             </span>
           </RouterLink>

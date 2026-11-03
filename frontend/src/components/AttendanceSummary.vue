@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import type { AttendanceFilter, AttendanceSummary } from '@/stores/attendance'
 
 const props = defineProps<{ summary: AttendanceSummary; filter: AttendanceFilter }>()
 const emit = defineEmits<{ select: [filter: AttendanceFilter] }>()
+const { t } = useI18n()
 
 const FIGURES = [
-  { filter: 'GOING', label: 'Going', count: () => props.summary.going },
-  { filter: 'NOT_GOING', label: "Can't go", count: () => props.summary.notGoing },
-  { filter: 'NO_REPLY', label: 'No reply', count: () => props.summary.noReply },
+  { filter: 'GOING', label: () => t('attendance.going'), count: () => props.summary.going },
+  { filter: 'NOT_GOING', label: () => t('attendance.notGoing'), count: () => props.summary.notGoing },
+  { filter: 'NO_REPLY', label: () => t('attendance.noReply'), count: () => props.summary.noReply },
 ] as const
 
 // Tapping the figure that is already active shows everyone again.
@@ -25,7 +28,7 @@ const choose = (filter: AttendanceFilter) => emit('select', props.filter === fil
         @click="choose(figure.filter)"
       >
         <strong data-count class="font-semibold text-[var(--app-ink)] tabular-nums">{{ figure.count() }}</strong>
-        {{ figure.label }}
+        {{ figure.label() }}
       </button>
     </template>
   </p>

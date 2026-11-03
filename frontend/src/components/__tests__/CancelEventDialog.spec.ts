@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
+import { applyLocale } from '@/i18n'
 import CancelEventDialog from '../CancelEventDialog.vue'
 import { installDialogPolyfill } from './dialogPolyfill'
 
@@ -69,5 +70,16 @@ describe('CancelEventDialog', () => {
 
     expect(wrapper.text()).toContain('Too long')
     expect(button(wrapper, 'Cancel event').attributes('disabled')).toBeDefined()
+  })
+})
+
+describe('CancelEventDialog in Japanese', () => {
+  it('asks to cancel the event in Japanese', () => {
+    applyLocale('ja')
+    const wrapper = mount(CancelEventDialog, { props: { ...props, notified: true } })
+
+    expect(wrapper.find('h2').text()).toBe('「Rehearsal」を中止しますか？')
+    expect(wrapper.text()).toContain('通知済みのメンバーには中止のメールが届きます。')
+    expect(button(wrapper, 'イベントを中止')).toBeDefined()
   })
 })

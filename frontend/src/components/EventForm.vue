@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import type { EventDraft, EventItem } from '@/stores/events'
 import type { EventTypeColorKey } from '@/ui/eventTypeColors'
@@ -29,6 +30,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ submit: [payload: EventDraft]; cancel: [] }>()
+const { t } = useI18n()
 
 const MAX_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const PAST_ALLOWANCE_MS = 60_000
@@ -69,7 +71,7 @@ const touched = ref<Record<string, boolean>>({})
 const submitted = ref(false)
 
 const suggestedDuration = computed(
-  () => props.eventTypes.find((t) => t.id === form.eventTypeId)?.defaultDurationMinutes,
+  () => props.eventTypes.find((type) => type.id === form.eventTypeId)?.defaultDurationMinutes,
 )
 
 /** Today's wall-clock "now" in the chosen zone, as the same fake-UTC milliseconds the form compares. */
@@ -93,25 +95,25 @@ const startChanged = computed(
 
 const clientErrors = computed(() => {
   const title = form.title.trim()
-  const t = form.times
-  const start = wallClockMs(t.startDate, t.startTime)
-  const end = wallClockMs(t.endDate, t.endTime)
+  const times = form.times
+  const start = wallClockMs(times.startDate, times.startTime)
+  const end = wallClockMs(times.endDate, times.endTime)
   let startError = ''
   let endError = ''
-  if (Number.isNaN(start)) startError = 'Enter a start date and time.'
+  if (Number.isNaN(start)) startError = t('events.form.enterStart')
   else if ((!props.event || startChanged.value) && start < nowInZoneMs(form.timeZone)) {
-    startError = "The start can't be in the past."
+    startError = t('events.form.startPast')
   }
-  if (Number.isNaN(end)) endError = 'Enter an end date and time.'
-  else if (!Number.isNaN(start) && end <= start) endError = 'End must be after the start.'
-  else if (!Number.isNaN(start) && end - start > MAX_DAYS_MS) endError = 'An event can last at most 7 days.'
+  if (Number.isNaN(end)) endError = t('events.form.enterEnd')
+  else if (!Number.isNaN(start) && end <= start) endError = t('events.form.endAfterStart')
+  else if (!Number.isNaN(start) && end - start > MAX_DAYS_MS) endError = t('events.form.maxSevenDays')
   return {
-    title: !title ? 'Enter a title.' : title.length > 120 ? 'Use 120 characters or fewer.' : '',
-    eventTypeId: !form.eventTypeId ? 'Choose an event type.' : '',
+    title: !title ? t('events.form.enterTitle') : title.length > 120 ? t('common.maxChars', { n: 120 }) : '',
+    eventTypeId: !form.eventTypeId ? t('events.form.chooseType') : '',
     localStart: startError,
     localEnd: endError,
-    location: form.location.trim().length > 200 ? 'Use 200 characters or fewer.' : '',
-    description: form.description.trim().length > 2000 ? 'Use 2000 characters or fewer.' : '',
+    location: form.location.trim().length > 200 ? t('common.maxChars', { n: 200 }) : '',
+    description: form.description.trim().length > 2000 ? t('common.maxChars', { n: 2000 }) : '',
   }
 })
 
@@ -168,7 +170,7 @@ function onKeydown(event: KeyboardEvent) {
   <form class="space-y-5" novalidate @submit.prevent="submit" @keydown="onKeydown">
     <TextField
       v-model="form.title"
-      label="Title"
+      :label="t('events.form.title')"
       name="title"
       autocomplete="off"
       :error="errorFor('title')"
@@ -193,7 +195,7 @@ function onKeydown(event: KeyboardEvent) {
     <TimeZoneField v-model="form.timeZone" :error="fieldErrors?.timeZone" :disabled="saving" />
     <TextField
       v-model="form.location"
-      label="Location"
+      :label="t('events.form.location')"
       name="location"
       autocomplete="off"
       :error="errorFor('location')"
@@ -202,7 +204,7 @@ function onKeydown(event: KeyboardEvent) {
     />
     <TextAreaField
       v-model="form.description"
-      label="Description"
+      :label="t('events.form.description')"
       name="description"
       :maxlength="2000"
       :error="errorFor('description')"
@@ -210,8 +212,8 @@ function onKeydown(event: KeyboardEvent) {
       @blur="touched.description = true"
     />
     <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-      <BaseButton class="max-sm:w-full" variant="plain" @click="emit('cancel')">Cancel</BaseButton>
-      <BaseButton class="max-sm:w-full" type="submit" :loading="saving" :disabled="!canSave">Save</BaseButton>
+      <BaseButton class="max-sm:w-full" variant="plain" @click="emit('cancel')">{{ t('common.cancel') }}</BaseButton>
+      <BaseButton class="max-sm:w-full" type="submit" :loading="saving" :disabled="!canSave">{{ t('common.save') }}</BaseButton>
     </div>
   </form>
 </template>

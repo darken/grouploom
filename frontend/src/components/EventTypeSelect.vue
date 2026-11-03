@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 
 import type { EventTypeColorKey } from '@/ui/eventTypeColors'
@@ -23,13 +24,14 @@ const props = defineProps<{
   disabled?: boolean
 }>()
 
+const { t } = useI18n()
 const id = useId()
 
 const choices = computed(() => {
   const list = props.options.map((o) => ({ ...o, label: o.name }))
   const current = props.current
   if (current && !list.some((o) => o.id === current.id)) {
-    list.unshift({ ...current, label: current.archived ? `${current.name} (archived)` : current.name })
+    list.unshift({ ...current, label: current.archived ? t('common.archivedName', { name: current.name }) : current.name })
   }
   return list
 })
@@ -39,10 +41,10 @@ const chosen = computed(() => choices.value.find((o) => o.id === model.value))
 
 <template>
   <div>
-    <label :for="id" class="mb-1.5 block text-sm font-medium">Type</label>
+    <label :for="id" class="mb-1.5 block text-sm font-medium">{{ t('events.form.type') }}</label>
     <p v-if="!choices.length" class="flex h-11 items-center text-[15px] text-[var(--app-muted)]">
       <RouterLink to="/event-types" class="text-[var(--app-accent)] underline-offset-2 hover:underline">
-        Create an event type first
+        {{ t('events.form.createTypeFirst') }}
       </RouterLink>
     </p>
     <div v-else class="relative">
@@ -62,7 +64,7 @@ const chosen = computed(() => choices.value.find((o) => o.id === model.value))
         class="h-11 w-full rounded-xl border border-transparent bg-[var(--app-fill)] pr-3.5 text-[16px] text-[var(--app-ink)] transition-shadow duration-150 ease-out focus:border-[var(--app-accent)] focus:outline-none focus:ring-4 focus:ring-[var(--app-accent)]/20 disabled:opacity-60 aria-[invalid=true]:border-[var(--app-danger)]"
         :class="chosen ? 'pl-9' : 'pl-3.5'"
       >
-        <option value="" disabled>Choose a type</option>
+        <option value="" disabled>{{ t('events.form.chooseTypePlaceholder') }}</option>
         <option v-for="option in choices" :key="option.id" :value="option.id">{{ option.label }}</option>
       </select>
     </div>
