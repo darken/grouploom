@@ -36,7 +36,7 @@
             <th:block th:replace="${content}">content</th:block>
             <p class="secondary" style="margin:32px 0 0 0;font-size:13px;line-height:20px;color:#6e6e73;">
               <span th:utext="#{mail.footer.reason(${#strings.escapeXml(groupName)})}">You're getting this because you're a member of Group.</span>
-              <a class="link" th:href="${preferencesLink}" th:text="#{mail.footer.choose}" href="#" style="color:#0066cc;text-decoration:none;">Choose which events you hear about</a>
+              <a class="link" th:href="${preferencesLink}" th:text="#{mail.footer.choose}" href="#" style="display:inline-block;color:#0066cc;text-decoration:none;">Choose which events you hear about</a>
             </p>
           </td>
         </tr>
