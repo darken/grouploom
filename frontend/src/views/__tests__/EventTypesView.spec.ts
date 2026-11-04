@@ -350,7 +350,7 @@ describe('EventTypesView in Japanese', () => {
     get.mockResolvedValue(pageOf([]))
     const { wrapper } = await mountView()
 
-    await wrapper.findAll('button').find((b) => b.text() === '種類を作成')!.trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === '種類を追加')!.trigger('click')
     await flushPromises()
 
     const dialog = wrapper.findAll('dialog').find((d) => d.attributes('open') !== undefined)!

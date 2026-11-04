@@ -44,7 +44,7 @@ describe('PaginationBar in Japanese', () => {
     applyLocale('ja')
     const wrapper = mount(PaginationBar, { props: { page: 0, size: 20, total: 43 } })
 
-    expect(wrapper.text()).toContain('43件中 1–20件')
+    expect(wrapper.text()).toContain('43件中 1〜20件')
     expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['前へ', '次へ'])
   })
 })

@@ -47,7 +47,7 @@
     "unreachable": {
       "title": "サーバーが応答しません",
       "body": "まだ起動中か、停止している可能性があります。しばらくしてからもう一度お試しください。",
-      "retry": "もう一度試す"
+      "retry": "再試行"
     }
   },
   "common": {
@@ -55,7 +55,7 @@
     "retry": "再試行",
     "pagination": {
       "label": "ページ送り",
-      "range": "{total}件中 {from}–{to}件",
+      "range": "{total}件中 {from}〜{to}件",
       "previous": "前へ",
       "next": "次へ"
     },
@@ -125,7 +125,7 @@
       "detail": "サーバーに接続できませんでした。"
     },
     "invalidValue": "値が正しくありません。",
-    "requestFailed": "リクエストに失敗しました。",
+    "requestFailed": "リクエストに失敗しました",
     "generic": "問題が発生しました",
     "fieldMessage": "{field}：{message}"
   },
@@ -188,10 +188,10 @@
       "enterTitle": "タイトルを入力してください。",
       "chooseType": "イベントの種類を選んでください。",
       "enterStart": "開始日時を入力してください。",
-      "startPast": "開始日時は過去にできません。",
+      "startPast": "開始日時を過去にすることはできません。",
       "enterEnd": "終了日時を入力してください。",
       "endAfterStart": "終了は開始より後にしてください。",
-      "maxSevenDays": "イベントは最長7日間です。",
+      "maxSevenDays": "イベントの期間は最長7日間です。",
       "createTypeFirst": "先にイベントの種類を作成してください",
       "chooseTypePlaceholder": "種類を選択",
       "timeZone": "タイムゾーン",
@@ -323,7 +323,7 @@
     "empty": {
       "title": "イベントの種類はまだありません",
       "description": "イベントの種類を使うと、練習や会議などの似たイベントをまとめられます。",
-      "create": "種類を作成",
+      "create": "種類を追加",
       "archived": "アーカイブ済みの種類はありません。"
     },
     "toast": {
@@ -397,7 +397,7 @@
       "skipped": " · {n}人をスキップ",
       "removed": "メンバーを削除しました",
       "linkFailed": "リンクを作成できませんでした。もう一度お試しください。",
-      "copied": "リンクをコピーしました。{lifetime}間有効です。",
+      "copied": "リンクをコピーしました。{lifetime}有効です。",
       "copiedShort": "リンクをコピーしました。"
     },
     "form": {
@@ -413,7 +413,7 @@
       "copyLink": "メール設定リンクをコピー",
       "remove": "削除",
       "paused": "一時停止中",
-      "days": "{n}日",
+      "days": "{n}日間",
       "deliveryFailed": "リンクを配信できませんでした",
       "tryAgain": "再試行",
       "linkSent": "リンク送信済み · {when}",

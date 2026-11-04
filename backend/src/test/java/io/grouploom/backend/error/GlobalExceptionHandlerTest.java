@@ -150,14 +150,14 @@ class GlobalExceptionHandlerTest {
 	void conflict_withJapaneseBrowser_returnsJapaneseDetailAndTheSameCode() throws Exception {
 		mockMvc.perform(get("/test/stale").header("Accept-Language", "ja"))
 			.andExpect(status().isConflict())
-			.andExpect(jsonPath("$.detail").value("このイベントは他の人が変更しました。再読み込みしてからもう一度お試しください。"))
+			.andExpect(jsonPath("$.detail").value("このイベントは他のユーザーが変更しました。再読み込みしてからもう一度お試しください。"))
 			.andExpect(jsonPath("$.code").value("event.stale"));
 	}
 
 	@Test
 	void conflict_withRegionalJapanese_returnsJapanese() throws Exception {
 		mockMvc.perform(get("/test/stale").header("Accept-Language", "ja-JP,ja;q=0.9,en;q=0.8"))
-			.andExpect(jsonPath("$.detail").value("このイベントは他の人が変更しました。再読み込みしてからもう一度お試しください。"));
+			.andExpect(jsonPath("$.detail").value("このイベントは他のユーザーが変更しました。再読み込みしてからもう一度お試しください。"));
 	}
 
 	@Test
