@@ -232,6 +232,40 @@ class EventEmailComposersTest {
 		assertThat(email.replyTo()).isNull();
 	}
 
+	// --- special characters: plain text prints values as written, HTML escapes them ---
+
+	@Test
+	void compose_textPartPrintsNamesTitlesAndNotesAsWritten() {
+		ReflectionTestUtils.setField(group, "name", "Tom's Club");
+		Event e = event("Pizza & Games", "Dough <3 & \"cheese\"", "Tom's place & garden");
+		String note = "Bring \"snacks\" <3";
+
+		for (OutgoingEmail email : new OutgoingEmail[] { invitation(e, note), reminder(e, Instant.parse("2026-11-06T09:00:00Z")),
+				cancellation(e, note) }) {
+			assertThat(email.text()).startsWith("Tom's Club\n").contains("Pizza & Games")
+				.contains("Dough <3 & \"cheese\"").contains("Tom's place & garden")
+				.contains("you're a member of Tom's Club.").doesNotContain("&amp;").doesNotContain("&#39;")
+				.doesNotContain("&lt;").doesNotContain("&quot;");
+			assertThat(email.text()).contains("https://app.example.com/m/preferences#t=pref_tok-1");
+		}
+		// Reminders carry no organizer note.
+		assertThat(invitation(e, note).text()).contains(note);
+		assertThat(cancellation(e, note).text()).contains(note);
+	}
+
+	@Test
+	void compose_htmlPartStillEscapesNamesTitlesAndNotes() {
+		ReflectionTestUtils.setField(group, "name", "Tom's Club");
+		Event e = event("Pizza & Games", null, null);
+		String note = "Bring \"snacks\" <3";
+
+		for (OutgoingEmail email : new OutgoingEmail[] { invitation(e, note), cancellation(e, note) }) {
+			assertThat(email.html()).contains("Pizza &amp; Games").contains("Bring &quot;snacks&quot; &lt;3")
+				.containsAnyOf("Tom&#39;s Club", "Tom&#x27;s Club").doesNotContain("Pizza & Games")
+				.doesNotContain("<3").doesNotContain("Bring \"snacks\"");
+		}
+	}
+
 	// --- attendance ---
 
 	private static final String GOING_LINK = "https://app.example.com/m/attend#t=att_tok-3&r=going";

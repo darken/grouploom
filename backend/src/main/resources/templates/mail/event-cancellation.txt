@@ -1,19 +1,19 @@
-[[${groupName}]]
+[(${groupName})]
 
-[[${statusLabel}]]
-[[${title}]]
-[[${timeLine}]]
+[(${statusLabel})]
+[(${title})]
+[(${timeLine})]
 [# th:if="${location != null}"]
-[[${location}]]
+[(${location})]
 [/]
 [# th:if="${description != null}"]
-[[${description}]]
+[(${description})]
 [/]
 [# th:if="${note != null}"]
-[[${note}]]
+[(${note})]
 [/]
 
 --
 [(#{mail.footer.reason(${groupName})})]
 [(#{mail.footer.choose})]:
-[[${preferencesLink}]]
+[(${preferencesLink})]

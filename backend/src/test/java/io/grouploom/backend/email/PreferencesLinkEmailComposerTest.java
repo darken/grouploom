@@ -77,6 +77,22 @@ class PreferencesLinkEmailComposerTest {
 	}
 
 	@Test
+	void compose_textPartPrintsNamesAsWritten() {
+		OutgoingEmail email = compose("Tom's Club", "Ana & <Bo>");
+
+		assertThat(email.text()).startsWith("Tom's Club\n").contains("Ana & <Bo>").contains("Tom's Club would like to know")
+			.contains(LINK).doesNotContain("&amp;").doesNotContain("&#39;").doesNotContain("&lt;");
+	}
+
+	@Test
+	void compose_htmlPartStillEscapesNames() {
+		OutgoingEmail email = compose("Tom's Club", "Ana & <Bo>");
+
+		assertThat(email.html()).contains("Ana &amp; &lt;Bo&gt;").containsAnyOf("Tom&#39;s Club", "Tom&#x27;s Club")
+			.doesNotContain("<Bo>").doesNotContain("Ana & <Bo>");
+	}
+
+	@Test
 	void compose_htmlOffersLightAndDarkColorSchemes() {
 		OutgoingEmail email = compose("Chess Club", "Ana");
 

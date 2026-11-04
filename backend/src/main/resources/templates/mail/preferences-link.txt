@@ -1,11 +1,11 @@
-[[${groupName}]]
+[(${groupName})]
 
 [(#{mail.preferences.greeting(${memberName})})]
 
 [(#{mail.preferences.intro.text(${groupName})})]
 
 [(#{mail.preferences.button})]:
-[[${link}]]
+[(${link})]
 
 [(#{mail.preferences.expires(${ttlText})})]
 
