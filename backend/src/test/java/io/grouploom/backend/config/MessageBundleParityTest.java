@@ -7,6 +7,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -45,6 +47,42 @@ public class MessageBundleParityTest {
 			assertThat(properties.stringPropertyNames()).allSatisfy(key -> assertThat(properties.getProperty(key))
 				.as(name + ": " + key)
 				.isNotBlank());
+		}
+	}
+
+	// The Japanese Size message only names the upper limit; the password, the one @Size with a minimum, has its own key.
+	private static final Set<String> PLACEHOLDERS_MAY_DIFFER = Set.of("jakarta.validation.constraints.Size.message");
+
+	private static final Pattern PLACEHOLDER = Pattern.compile("\\{[^}]+\\}");
+
+	private static Set<String> placeholders(String message) {
+		Set<String> found = new TreeSet<>();
+		Matcher matcher = PLACEHOLDER.matcher(message);
+		while (matcher.find()) {
+			found.add(matcher.group());
+		}
+		return found;
+	}
+
+	@Test
+	void japanese_usesTheSamePlaceholdersAsEnglish() throws IOException {
+		Properties english = load("messages.properties");
+		Properties japanese = load("messages_ja.properties");
+
+		for (String key : english.stringPropertyNames()) {
+			if (!PLACEHOLDERS_MAY_DIFFER.contains(key)) {
+				assertThat(placeholders(japanese.getProperty(key))).as(key).isEqualTo(placeholders(english.getProperty(key)));
+			}
+		}
+	}
+
+	@Test
+	void japanese_usesFullWidthPunctuation() throws IOException {
+		Properties japanese = load("messages_ja.properties");
+
+		for (String key : japanese.stringPropertyNames()) {
+			String withoutPlaceholders = PLACEHOLDER.matcher(japanese.getProperty(key)).replaceAll("");
+			assertThat(withoutPlaceholders).as(key).doesNotContain(":").doesNotContain("!").doesNotContain("?");
 		}
 	}
 
