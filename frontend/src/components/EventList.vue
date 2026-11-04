@@ -54,8 +54,8 @@ function inProgress(event: EventItem): boolean {
               aria-hidden="true"
             />
             <span class="min-w-0 flex-1">
-              <span class="flex items-center gap-2">
-                <span data-title class="truncate font-medium" :class="event.cancelledAt && 'text-[var(--app-muted)] line-through'">{{ event.title }}</span>
+              <span class="flex items-center gap-2 max-sm:items-start">
+                <span data-title class="font-medium max-sm:line-clamp-2 max-sm:break-words sm:truncate" :class="event.cancelledAt && 'text-[var(--app-muted)] line-through'">{{ event.title }}</span>
                 <span v-if="event.cancelledAt" data-cancelled class="shrink-0 text-sm text-[var(--app-danger)]">{{ t('events.cancelled') }}</span>
                 <span
                   v-if="inProgress(event)"

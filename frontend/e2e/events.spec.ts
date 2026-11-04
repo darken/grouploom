@@ -74,3 +74,44 @@ test('schedules events: create with an auto-filled end, find, edit, archive-inst
   await page.getByRole('dialog', { name: "Delete 'Dress rehearsal'?" }).getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByText('Nothing scheduled.')).toBeVisible()
 })
+
+test('wraps a long event title to two lines on a phone and keeps one line on a desktop', async ({ page }) => {
+  // page.request shares the browser context's cookies, so the refresh cookie from sign-up logs the page in.
+  const signup = await page.request.post('/api/auth/signup', {
+    data: {
+      groupName: 'E2E Club',
+      displayName: 'Ada Lovelace',
+      email: `e2e-title-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`,
+      password: 'correct horse battery',
+    },
+  })
+  const headers = { Authorization: `Bearer ${(await signup.json()).accessToken}` }
+  const type = await page.request.post('/api/event-types', { headers, data: { name: 'Practice', color: 'green' } })
+  await page.request.post('/api/events', {
+    headers,
+    data: {
+      eventTypeId: (await type.json()).id,
+      title: 'The annual spring rehearsal before the big regional championship with every section present on stage',
+      localStart: '2099-03-10T10:00:00',
+      localEnd: '2099-03-10T11:00:00',
+      timeZone: 'UTC',
+    },
+  })
+
+  const measure = () =>
+    page.locator('[data-title]').evaluate((el) => {
+      const style = getComputedStyle(el)
+      const lineHeight = parseFloat(style.lineHeight)
+      return { lines: Math.round(el.getBoundingClientRect().height / lineHeight), clipped: el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1 }
+    })
+
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/events')
+  await expect(page.locator('[data-title]')).toBeVisible()
+  // Two lines, cut off with an ellipsis because the title needs more.
+  expect(await measure()).toEqual({ lines: 2, clipped: true })
+
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await expect(page.locator('[data-title]')).toBeVisible()
+  expect((await measure()).lines).toBe(1)
+})
