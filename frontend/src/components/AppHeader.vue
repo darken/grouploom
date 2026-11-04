@@ -32,7 +32,7 @@ function isCurrent(to: string) {
         </svg>
         <span class="max-sm:sr-only">GroupLoom</span>
       </RouterLink>
-      <nav :aria-label="t('nav.label')" class="mr-auto ml-3 flex gap-3.5 text-[14px] whitespace-nowrap sm:ml-8 sm:gap-6 sm:text-[15px]">
+      <nav :aria-label="t('nav.label')" class="mr-auto ml-3 flex gap-3.5 text-[14px] whitespace-nowrap sm:ml-8 sm:gap-6 sm:text-[15px] max-sm:ja:gap-2.5 max-sm:ja:text-[13px]">
         <RouterLink v-for="link in links" :key="link.to" v-slot="{ href, navigate }" :to="link.to" custom>
           <a :href="href" class="nav-link py-1" :aria-current="isCurrent(link.to) ? 'page' : undefined" @click="navigate">{{ link.label }}</a>
         </RouterLink>

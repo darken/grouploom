@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
+/* `ja:` applies a utility only while the page is Japanese, so English layouts are untouched. */
+@custom-variant ja (&:where(:lang(ja), :lang(ja) *));
 
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
