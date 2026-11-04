@@ -53,6 +53,17 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Japanese only, so English pages stay as they are. The Latin fonts stay first, so words and numbers inside
+     Japanese text keep their look and the Japanese characters come from a proper Japanese font. */
+  html:lang(ja) {
+    --font-sans:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+      "Yu Gothic UI", Meiryo, "Noto Sans JP", system-ui, sans-serif;
+    /* Break between phrases (Chrome and Edge; other browsers ignore it), and never start a line with 。 、 or ー. */
+    word-break: auto-phrase;
+    line-break: strict;
+  }
+
   :focus-visible {
     outline: 2px solid var(--app-accent);
     outline-offset: 2px;
