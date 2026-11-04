@@ -24,6 +24,22 @@ describe('initials', () => {
     expect(initials('𝒜da Lovelace')).toBe('𝒜L')
   })
 
+  it('uses one character for a Japanese name, the family name coming first', () => {
+    expect(initials('山田 太郎')).toBe('山')
+    expect(initials('山田　太郎')).toBe('山')
+    expect(initials('たなか ゆき')).toBe('た')
+    expect(initials('タナカ ユキ')).toBe('タ')
+  })
+
+  it('uses one character for a Japanese name written without a space', () => {
+    expect(initials('山田太郎')).toBe('山')
+  })
+
+  it('follows the first word when a name mixes scripts', () => {
+    expect(initials('Ken 山田')).toBe('K')
+    expect(initials('山田 Ken')).toBe('山')
+  })
+
   it('returns an empty string for a blank name', () => {
     expect(initials('   ')).toBe('')
   })
