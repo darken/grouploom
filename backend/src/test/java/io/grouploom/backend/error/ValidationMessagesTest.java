@@ -144,7 +144,7 @@ class ValidationMessagesTest {
 		String json = "{\"localStart\":\"2026-11-07T10:00:00\",\"localEnd\":\"2026-11-07T11:00:00\",\"timeZone\":\"Mars/Base\"}";
 		mockMvc.perform(send("/test/times", "ja", json))
 			.andExpect(jsonPath("$.errors[0].field").value("timeZone"))
-			.andExpect(jsonPath("$.errors[0].message").value("有効なタイムゾーンを指定してください。例: Europe/Madrid"));
+			.andExpect(jsonPath("$.errors[0].message").value("有効なタイムゾーンを指定してください。例：Europe/Madrid"));
 		mockMvc.perform(send("/test/times", null, json))
 			.andExpect(jsonPath("$.errors[0].message").value("must be a valid time zone, e.g. Europe/Madrid"));
 	}

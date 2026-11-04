@@ -127,7 +127,7 @@
     "invalidValue": "値が正しくありません。",
     "requestFailed": "リクエストに失敗しました。",
     "generic": "問題が発生しました",
-    "fieldMessage": "{field}: {message}"
+    "fieldMessage": "{field}：{message}"
   },
   "auth": {
     "email": "メールアドレス",
@@ -195,7 +195,7 @@
       "createTypeFirst": "先にイベントの種類を作成してください",
       "chooseTypePlaceholder": "種類を選択",
       "timeZone": "タイムゾーン",
-      "timeZoneCurrent": "タイムゾーン: {zone} · {change}",
+      "timeZoneCurrent": "タイムゾーン：{zone} · {change}",
       "timeZoneChange": "変更"
     },
     "duration": {
@@ -435,7 +435,7 @@
     "preferences": {
       "title": "メール設定",
       "greeting": "{name}さん、{group}のイベントのうち、お知らせを受け取りたいものを選んでください。",
-      "sendingTo": "送信先: {email}",
+      "sendingTo": "送信先：{email}",
       "eventTypes": "イベントの種類",
       "noTypes": "{group}にはまだイベントの種類が設定されていません。",
       "paused": "招待は一時停止中です。下の選択内容は保持されます。",
@@ -447,7 +447,7 @@
       "hi": "{name}さん、こんにちは",
       "cancelled": "このイベントは中止されました。",
       "started": "このイベントは開始済みのため、回答の受付は終了しました。",
-      "yourReply": "あなたの回答: {answer}",
+      "yourReply": "あなたの回答：{answer}",
       "thanksGoing": "{name}さん、ありがとうございます。参加で承りました。",
       "thanks": "お知らせいただきありがとうございます。",
       "change": "回答を変更",

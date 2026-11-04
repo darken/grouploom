@@ -253,7 +253,7 @@ describe('MemberPreferencesView in Japanese', () => {
 
     expect(wrapper.get('h1').text()).toBe('メール設定')
     expect(wrapper.text()).toContain('Anaさん、Chess Clubのイベントのうち、お知らせを受け取りたいものを選んでください。')
-    expect(wrapper.text()).toContain('送信先: a••@example.com')
+    expect(wrapper.text()).toContain('送信先：a••@example.com')
     expect(wrapper.text()).toContain('すべての招待を一時停止')
     expect(wrapper.text()).toContain('招待は一時停止中です。')
   })
